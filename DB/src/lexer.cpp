@@ -1,0 +1,496 @@
+#include "lexer.h"
+#include <functional>
+#include <unordered_set>
+
+using namespace DB::lexer;
+using std::unordered_set;
+using std::size_t;
+using std::function;
+using std::vector;
+using std::string;
+using std::variant;
+using std::make_tuple;
+using std::unordered_map;
+using keyword_it = unordered_map<string, type>::const_iterator;
+
+
+namespace DB::lexer {
+	std::string type2str(type _type) noexcept
+	{
+		auto it = keyword2str.find(_type);
+		if (it == keyword2str.end())return "No such type";
+		return it->second;
+	}
+	type num_t2type(numeric_type num_t) noexcept {
+		return static_cast<type>(static_cast<std::size_t>(type::INT)
+			+ static_cast<std::size_t>(num_t) - static_cast<std::size_t>(numeric_type::INT));
+	}
+}
+
+/**
+ * analyzers
+ */
+namespace DB::lexer::analyzers {
+	using analyzer = function<bool(const char *, size_t&, const size_t, vector<token_info> &)>;
+
+	const static unordered_map<char, char> escapingMap = {
+			{ 't', '\t' }, { 'n', '\n' }, { 'r', '\r' }, { 'a', '\a' }, { 'b', '\b' }, { 'f', '\f' }
+	};
+	const static unordered_set<char> combinableOperatorSet = {
+			'!', '=', '<', '>', //'%', '.', ':', '+', '^', '*', '/',
+	};
+	const static unordered_set<char> singleOperatorSet = {
+			'(', ')', '{', '}', '[', ']', ',', '?', '%', '.', ':', '+', '^', '*', '/', '$',
+	};
+	const static unordered_set<char> secondCombinableOperatorSet = {
+			'=', //'|', '&', '.', ':', '<', '>', '+',
+	};
+	const static unordered_set<char> dividerCharSet = {
+			' ', '\n', '\t'
+	};
+
+	inline bool isDivider(char c) {
+		return dividerCharSet.find(c) != dividerCharSet.end();
+	}
+	inline bool isWordBeginning(char c) {
+		return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+	}
+	inline bool isNum(char c) {
+		return c >= '0' && c <= '9';
+	}
+	inline bool isNumBegin(char c) {
+		return isNum(c) || c == '.';
+	}
+	inline bool canInWord(char c) {
+		return isWordBeginning(c) || isNum(c);
+	}
+	inline bool isCombinableOperatorChar(char c) {
+		return combinableOperatorSet.find(c) != combinableOperatorSet.end();
+	}
+	inline bool isSingleOperatorChar(char c) {
+		return singleOperatorSet.find(c) != singleOperatorSet.end();
+	}
+	inline bool isSecondCombinableOpearatorChar(char c) {
+		return secondCombinableOperatorSet.find(c) != secondCombinableOperatorSet.end();
+	}
+	
+
+#define analyzer_type(funcname) bool funcname(const char *s, size_t& pos, const size_t size, vector<token_info> &r)
+
+	analyzer_type(word_analyzer) {
+		if (!isWordBeginning(s[pos]))
+			return false;
+		size_t length = 1;
+		for (; canInWord(s[pos + length]); length++);
+
+
+		string ns(s + pos, length);
+		keyword_it it = keywords.find(ns);
+		if (it != keywords.end())
+			if (it->second == type::TRUE)
+				r.push_back(make_tuple((std::tuple<const double, const numeric_type>(1.0, numeric_type::BOOLEAN)), pos));
+			else if (it->second == type::FALSE)
+				r.push_back(make_tuple((std::tuple<const double, const numeric_type>(0.0, numeric_type::BOOLEAN)), pos));
+			else
+				r.push_back(make_tuple((it->second), pos));
+		else
+			r.push_back(make_tuple((std::move(ns)), pos));
+
+		pos += length;
+
+		return true;
+	}
+
+	// get the longest operators
+	analyzer_type(combinable_operator_analyzer) {
+		if (!isCombindableOperatorChar(s[pos]))
+			return false;
+
+		size_t begin = pos;
+		// for that the end of string is '\0' which is not combindable operator char, so there is no need to check the boundary
+
+		// here uses a somehow ambiguous analyze process
+		// for that it does not need a rigid DFA for every single combinable openning character
+		while (isSecondCombinableOpearatorChar(s[++pos]));
+		// loop to change
+		keyword_it it;
+		for (; (it = keywords.find(string(s + begin, pos - begin))) == keywords.end(); --pos);
+		r.push_back(make_tuple((it->second), pos));
+
+		return true;
+	}
+
+	analyzer_type(single_operator_analyzer) {
+		if (!isSingleSymbolChar(s[pos]))
+			return false;
+
+		r.push_back(make_tuple((keywords.find(string(1, s[pos++]))->second), pos));
+		return true;
+	}
+
+	// returns the char value in int
+	int escapeTackle(const char *s, size_t& pos, const size_t size, vector<token_info> &r) {
+		//here pos is in '\'
+		int value = 0;
+
+		auto octNumTackle = [&]() {
+			value = s[pos++];
+			// here pos is in first number
+			for (size_t begin = pos; isOctNum(s[pos]) && pos < begin + 2; ++pos)
+				value = value * 8 + (s[pos] - '0');
+			// here pos is in next char to check
+		};
+
+		auto hexNumTackle = [&]() {
+			// here pos is in 'x'
+			if (!isHex(s[++pos])) { // point to and get char next to 'x'
+				value = 'x';
+				return;
+			}
+			value = turnHex(s[pos++]);
+			for (size_t begin = pos; isHex(s[pos]) && pos < begin + 1; pos++)
+				value = value * 16 + turnHex(s[pos]);
+			// here pos is in next char to check
+		};
+
+		auto charTackle = [&]() {
+			char c = s[pos++]; // no need to point to next in the following
+			unordered_map<char, char>::const_iterator p = escapingMap.find(c);
+			if (p != escapingMap.end())
+				value = p->second;
+			else // like \', \", \\ that's just the same with '\c' which means 'c' itself
+				value = c;
+			// here pos is in next char to check
+		};
+
+		++pos;
+		// here pos is in meaningful pos next to '\'
+		char c = s[pos];
+		if (isOctNum(c))
+			octNumTackle();
+		else if (c == 'x')
+			hexNumTackle();
+		else
+			charTackle();
+
+
+		return value;
+		// here pos is in next char to check
+	}
+
+	analyzer_type(string_analyzer) {
+		if (s[pos] != '"')
+			return false;
+
+		string ns;
+
+		for (++pos; pos < size && s[pos] != '"'; )
+			if (s[pos] == '\\')
+				ns += (char)escapeTackle(s, pos, size, r); // it will point to next char to check
+			else
+				ns += s[pos++]; // also next char to check
+
+		if (pos == size)
+			throw Token_Ex("expected a corresponding '\"'", pos);
+
+		r.push_back(make_tuple((make_tuple(std::move(ns))), pos));
+
+		++pos;
+
+		return true;
+	}
+
+	// only get the number, but can be specified to accept the condition that tells whether it's minus
+	bool inner_number_analyzer(const char *s, size_t &pos, const size_t size, vector<token_info> &r, const bool isMinus = false) {
+
+		auto generateNumberException = [&]() {
+			throw Token_Ex("not a valid number", pos);
+		};
+
+		auto hexAnalyzer = [&]() {
+			pos += 2;
+			if (isMinus || !isHex(s[pos]))
+				generateNumberException();
+
+			double value = turnHex(s[pos]);
+			while (true)
+				if (isHex(s[++pos]))
+					value = value * 16 + turnHex(s[pos]);
+				else if (s[pos] == '_')
+					continue;
+				else
+					break;
+
+			// unnecessity
+			// check if it's followed by '.' to generate things.
+			//            while (isDivider(s[pos])) ++pos;
+			//            char c = s[pos];
+			//            if (c == '.')
+			//                generateNumberException();
+
+			r.push_back(make_tuple((std::tuple<const double, const numeric_type>(value, numeric_type::U32)), pos));
+		};
+
+		auto defaultAnalyzer = [&]() {
+			double value = 0;
+			numeric_type type = numeric_type::I32;
+
+			auto decimalAnalyzer = [&]() {
+				// here pos is where '.'/'e'/'E' appears
+				int decimal = 0;
+				type = numeric_type::F32;
+
+				auto f64Analyzer = [&]() {
+					// here pos is where e/E appears
+					++pos;
+					bool rminus = false;
+					if (s[pos] == '-') {
+						rminus = true;
+						++pos;
+					}
+					// for '\0' is definitely not num, no need to check the boundary
+					if (!isNum(s[pos]))
+						generateNumberException();
+
+					// previous(wrong) implemetation
+					//                    if (s[pos] != '-' && !isNum(s[pos]))
+					//                        generateNumberException();
+					//
+					//                    int right = 0;
+					//                    bool rminus = false;
+					//                    if (s[pos] == '-') {
+					//                        rminus = true;
+					//                        ++pos;
+					//                    }
+
+					int right = (s[pos] - '0');
+					type = numeric_type::F64;
+
+					while (true)
+						if (isNum(s[++pos]))
+							right = right * 10 + (s[pos] - '0');
+						else if (s[pos] == '_')
+							continue;
+						else
+							break;
+
+					r.push_back(make_tuple((std::tuple<const double, const numeric_type>((isMinus ? -value : value) * pow(10, rminus ? -right : right), type)), pos));
+				};
+
+				//default is f32 analyzer
+				for (; true; ++pos) {
+					char c = s[pos];
+					if (isNum(c))
+						value += (c - '0') * pow(10, decimal--);
+					else if (c == '_')
+						if (s[pos - 1] == '.')
+							throw Token_Ex("'.' can't be followed by '_'", pos);
+						else
+							continue;
+					else if (c == '.')
+						if (!decimal)
+							--decimal;
+						else
+							generateNumberException();
+					else if (c == 'e' || c == 'E') {
+						f64Analyzer();
+						return;
+					}
+					else
+						break;
+				}
+
+				r.push_back(make_tuple((std::tuple<const double, const numeric_type>((isMinus ? -value : value), type)), pos));
+			};
+
+
+			//default is i32 analyzer.
+			for (; true; ++pos) {
+				char c = s[pos];
+				if (isNum(c))
+					value = value * 10 + (c - '0');
+				else if (c == '_')
+					continue;
+				else if (c == '.' || c == 'e' || c == 'E') {
+					decimalAnalyzer();
+					return;
+				}
+				else if (c == 'u' || c == 'U') {
+					if (isMinus)
+						generateNumberException();
+					++pos;
+					type = numeric_type::U32;
+					break;
+				}
+				else
+					break;
+			}
+
+			r.push_back(make_tuple((std::tuple<const double, const numeric_type>((isMinus ? -value : value), type)), pos));
+		};
+
+
+		if (s[pos] == '0' && pos + 1 < size && s[pos + 1] == 'x')
+			hexAnalyzer();
+		else
+			defaultAnalyzer();
+
+		// unneccesity
+		// see if the following char is allowed
+		while (isDivider(s[pos])) ++pos;
+		if (pos < size && !canFollowNumber(s[pos]))
+			throw Token_Ex("not valid following content", pos);
+
+		return true;
+	}
+
+	analyzer_type(number_analyzer) {
+		if (!(isNum(s[pos]) || (s[pos] == '.' && isNum(s[pos + 1]))))
+			return false;
+
+		return inner_number_analyzer(s, pos, size, r);
+	}
+
+#undef write_analyzer
+}
+
+#ifdef TEST_CALC
+constexpr int analyzerNum = 1; //7 in normal, 1 in calculator
+analyzers::analyzer analyzer[] = {
+	analyzers::calculator_analyzer,
+};
+#else
+constexpr int analyzerNum = 7; //7 in normal, 1 in calculator
+analyzers::analyzer analyzer[] = {
+		analyzers::word_analyzer,
+		analyzers::number_analyzer,
+		analyzers::single_operator_analyzer,
+		analyzers::combinable_operator_analyzer,
+		analyzers::string_analyzer,
+};
+#endif
+
+namespace DB::lexer
+{
+	std::variant<std::vector<token_info>, analyzers::Token_Ex> tokenize(const char *s, const size_t size) noexcept {
+		vector<token_info> r;
+		bool ok;
+		for (size_t pos = 0; pos < size; ) {
+			ok = false;
+			if (analyzers::isDivider(s[pos])) {
+				++pos;
+				continue;
+			}
+			for (size_t i = 0; i < analyzerNum; i++) {
+				//if it returns true, means it've done, and there's no need to tackle this round again
+				try {
+					ok = analyzer[i](s, pos, size, r);
+					if (ok)
+						break;
+				}
+				catch (analyzers::Token_Ex& e) {
+					return analyzers::Token_Ex(
+						e._msg + "\"" + s[e._position] + "\"", e._position
+					);
+				}
+			}
+			if (!ok)
+				return analyzers::Token_Ex(
+					std::string("not a recognizable character.") + "\"" + s[pos] + "\"", pos
+				);
+		}
+
+		return r;
+	} // end fuction tokenize();
+
+
+	/*
+	 * class member function for Lexer.
+	 */
+	void Lexer::tokenize(const std::string filename)
+	{
+		constexpr std::size_t MAXSIZE = 256;
+		char buffer[MAXSIZE];
+		std::ifstream inputFile{ filename, std::ios::in };
+		if (!inputFile.is_open())
+		{
+			std::cout << "failed to open: " << std::quoted(filename) << std::endl;
+			return;
+		}
+		//try {
+		std::size_t line_num = 0;
+		_token_stream.clear();
+		while (!inputFile.eof())
+		{
+			inputFile.getline(buffer, MAXSIZE - 1);
+			line_num++;
+			auto result = DB::lexer::tokenize(buffer, strlen(buffer));
+			std::visit(overloaded{
+					[line_num](const DB::lexer::analyzers::Token_Ex& e) {
+						throw DB::DB_Universal_Exception{
+								std::move(const_cast<DB::lexer::analyzers::Token_Ex&>(e)._msg),
+								line_num, e._position }; },
+					[line_num, this](const std::vector<DB::lexer::token_info>& tokens) { for (token_info const& token : tokens) this->_token_stream.emplace_back(token, line_num); },
+				}, result);
+		}
+		inputFile.close();
+		//}
+		// catch (const DB::DB_Base_Exception& e) { e.printException(); }
+		// catch (const std::exception& e) { std::cout << e.what() << std::endl; }
+		// catch (...) { std::cout << "WTF: Unexpected Exception" << std::endl; }
+	}
+
+	std::size_t Lexer::size() const { return _token_stream.size(); }
+
+	bool Lexer::empty() const { return _token_stream.empty(); }
+
+#define CHECK_EMPTY_AND_UPDATE do{                                                  \
+    if (_token_stream.empty())                                                      \
+        throw DB_Universal_Exception("Need more tokens", cur_line, cur_pos);     \
+    cur_pos = _token_stream.front()._pos;                                           \
+    cur_line = _token_stream.front()._line;                                         \
+	} while(0)
+
+	Token Lexer::getToken() {
+		CHECK_EMPTY_AND_UPDATE;
+		return _token_stream.front();
+	}
+
+	void Lexer::popToken() {
+		CHECK_EMPTY_AND_UPDATE;
+		_token_stream.pop_front();
+	}
+
+	Token Lexer::consumeToken() {
+		CHECK_EMPTY_AND_UPDATE;
+		const Token token = _token_stream.front();
+		_token_stream.pop_front();
+		return token;
+	}
+
+
+	void Lexer::print(std::ostream& out) const {
+		for (Token const& token : _token_stream)
+		{
+			out << "line: " << token._line << " \tpos:" << token._pos << "\t\t";
+			std::visit(overloaded{
+					[&out](const DB::lexer::type& _type) { out << "type: " << "\t\t\t" << std::quoted(DB::lexer::type2str(_type)) << std::endl; },
+					[&out](const DB::lexer::identifier& _identifier) { out << "identifier: " << "\t\t" << _identifier << std::endl; },
+					[&out](const DB::lexer::numeric_t& _num) { out << "numeric: " << "\t\t" << std::quoted(DB::lexer::type2str(num_t2type(std::get<const DB::lexer::numeric_type>(_num)))) << "\t"; TEST::num_print(_num, out); out << std::endl; },
+					[&out](const DB::lexer::string_literal_t& _str) { out << "string literal: " << "\t" << std::quoted(std::get<const std::string>(_str)) << std::endl; },
+					[&out](auto) { out << "WTF: tokenizer" << std::endl; },
+				}, token._token);
+		}
+	}
+
+	type getType(const Token& token)
+	{
+		return std::visit(DB::util::overloaded{
+				[](const lexer::type& type) { return type; },
+				[](const lexer::identifier) { return lexer::type::IDENTIFIER; },
+				[](const lexer::numeric_t) { return lexer::type::NUMBER_CONSTANT; },
+				[](const lexer::string_literal_t) { return lexer::type::STR_LITERAL; },
+			}, token._token);
+	}
+
+} // end namespace DB::lexer
