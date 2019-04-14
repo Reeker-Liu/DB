@@ -31,7 +31,7 @@ namespace DB::lexer
 	enum class numeric_type { INT };
 	using numeric_t = std::tuple<const int, const numeric_type>;
 
-	using identifier = const std::strinsg;
+	using identifier = const std::string;
 
 	using string_literal_t = std::tuple<const std::string>;
 
@@ -106,7 +106,7 @@ namespace DB::lexer
 		{ "INSERT", type::INSERT },{ "DELETE", type::DELETE },{ "UPDATE", type::UPDATE },{ "SELECT", type::SELECT },
 		{ "TABLE", type::TABLE },{ "FROM", type::FROM },{ "WHERE", type::WHERE },{ "JOIN", type::JOIN },
 		{ "ORDERBY", type::ORDERBY },{ "ASC", type::ASC },{ "DESC", type::DESC },{ "SET", type::SET },
-		{ "DEFAULT", type::DEFAULT },{ "PRIMARY_KEY", type::PRIMARY_KEY },{ "REFERENCES", type::REFERENCES },
+		{ "DEFAULT", type::DEFAULT },{ "PK", type::PRIMARY_KEY },{ "REFERENCES", type::REFERENCES },
 
 		/* other operator */
 		{ ",", type::COMMA }, { ".", type::PERIOD }, { ";", type::SEMICOLON },

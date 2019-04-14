@@ -303,7 +303,7 @@ namespace DB::lexer
 			std::visit(overloaded{
 					[&out](const DB::lexer::type& _type) { out << "type: " << "\t\t\t" << std::quoted(DB::lexer::type2str(_type)) << std::endl; },
 					[&out](const DB::lexer::identifier& _identifier) { out << "identifier: " << "\t\t" << _identifier << std::endl; },
-					[&out](const DB::lexer::numeric_t& _num) { out << "numeric: " << "\t\t" << std::quoted(DB::lexer::type2str(num_t2type(std::get<const DB::lexer::numeric_type>(_num)))) << "\t"; out << std::get<int>(_num); out << std::endl; },
+					[&out](const DB::lexer::numeric_t& _num) { out << "numeric: " << "\t\t" << std::quoted(DB::lexer::type2str(num_t2type(std::get<const DB::lexer::numeric_type>(_num)))) << "\t"; out << std::get<const int>(_num); out << std::endl; },
 					[&out](const DB::lexer::string_literal_t& _str) { out << "string literal: " << "\t" << std::quoted(std::get<const std::string>(_str)) << std::endl; },
 					[&out](auto) { out << "unexpected tokenizer" << std::endl; },
 				}, token._token);
