@@ -1,6 +1,6 @@
 CREATE TABLE USER(id INT PK, name VARCHAR(20))
 INSERT USER(id,name) VALUES(123,"huaji")
-UPDATE USER SET name = "huawei" WHERE id == 123
-SELECT * FROM USER WHERE id > 3 AND name == "huaji"
+UPDATE USER SET name = "huawei" WHERE id == 1_2_3
+SELECT $ FROM USER WHERE id > 3 AND name == 'huaji'
 DELETE FROM USER WHERE id == 123
 DROP TABLE USER

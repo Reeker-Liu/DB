@@ -154,27 +154,18 @@ namespace DB::lexer::analyzers {
 		return true;
 	}
 
-	// only get the number, but can be specified to accept the condition that tells whether it's minus
-	bool inner_number_analyzer(const char *s, size_t &pos, const size_t size, vector<token_info> &r, const bool isMinus = false) {
-
-
-		return true;
-	}
-
 	//need to deal with oversize 
 	analyzer_type(number_analyzer) {
-		if (!(isNum(s[pos]) || (s[pos] == '.' && isNum(s[pos + 1]))))
+		if (!isNum(s[pos]) )
 			return false;
 		int value = 0;
 		numeric_type type = numeric_type::INT;
 
-		while (true) {
+		while (pos < size) {
 			char c = s[pos];
 			if (isNum(c))
 				value = value * 10 + (c - '0');
-			else if (c == '_')
-				continue;
-			else
+			else if (c != '_')
 				break;
 			++pos;
 		}

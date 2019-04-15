@@ -1,0 +1,202 @@
+/*
+to do:
+trigger
+procedure
+alias
+*/
+
+#include <iostream>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+namespace sql
+{
+
+	```tsl
+	terminate = enum class lexer::type
+	{
+		+, -, *, /, %,
+
+		NOT, AND, OR, 
+
+		==, !=, 
+		<, >, <=, >=, 
+
+		=,
+
+		NUMBER_CONSTANT, ID, STR_LITERAL,
+
+		INT,
+
+		CHAR, VARCHAR, $,
+		NULL, DISTINCT, VALUES,
+		CREATE, DROP, INSERT, DELETE, UPDATE, SELECT, 
+		TABLE, "FROM", WHERE, JOIN,
+		ORDERBY, ASC, DESC, SET,
+		DEFAULT, PRIMARY_KEY, REFERENCES, 
+
+		,, ., ;,
+		?, :,
+		(, ),
+		[, ],
+		{, },
+	};
+	token_type = lexer::Token;
+	get_type = lexer::getType;
+
+
+	sqlStatement := ddlStatement
+				  | dmlStatement
+				  ;
+
+
+	ddlStatement := createTable
+				  | dropTable
+				  ;
+
+
+	dmlStatement := selectStatement
+				  | insertStatement
+				  | updateStatement
+				  | deleteStatement
+				  ;
+
+	// Data Definition Language
+
+	createTable := "CREATE" "TABLE" tableName createDefinitions
+
+	dropTable := "DROP" "TABLE" tableName
+			   ;
+
+	createDefinitions := "(" createDefinition ["," createDefinition]* ")"
+					   ;
+
+	// need tableConstraint
+	createDefinition := "ID" columnDefinition     #columnDeclaration
+					  ;
+
+	columnDefinition := dataType columnConstraint*
+					  ;
+
+	dataType := "INT"
+			  | "CHAR" "(" positiveNum ")"
+			  | "VARCHAR" "(" positiveNum ")"
+			  ;
+
+	columnConstraint := "NOT" "NULL"
+					  | "DEFAULT" expression
+					  | "PK"
+					  | referenceDefinition
+					  ;
+
+	referenceDefinition := "REFERENCES" tableName "(" "ID" ")"
+						 ;
+
+	// Data Manipulation Language
+	insertStatement := "INSERT" tableName ["(" "ID" ["," "ID"]* ")"] insertStatementValue
+					 ;
+
+	deleteStatement := "DELETE" "FROM" tableName ["WHERE" expression]
+					 ;
+
+	updateStatement := "UPDATE" tableName "SET" updatedElement ["," updatedElement]* ["WHERE" expression]
+					 ;
+
+	selectStatement := "SELECT" ["DISTINCT"] selectElements [fromClause] ["WHERE" expression] [orderByClause]
+					 ;
+
+	// need selectStatement
+	insertStatementValue := "VALUES" "(" expressions ")" ["," "(" expressions ")"]*
+						  ;
+	updatedElement := columnName "=" (expression | "DEFAULT")
+						  
+						  
+	// Select Statement"s Details
+	selectElement := "$"
+					| columnName ["," columnName]*
+					;
+
+	orderByClause := "ORDERBY" orderByExpression ["," orderByExpression]*
+				   ;
+
+	orderByExpression := expression ["ASC"|"DESC"]
+					   ;
+
+	fromClause := "FROM" tableName ["," tableName]
+				| "FROM" tableName "JOIN" tableName
+				;
+
+
+	tableName := "ID"
+			   ;
+
+	columnName := ["ID" "."] "ID"
+				;
+
+	expressions := expression ["," expression]*
+				 ;
+
+
+	expression := expression logicalOperator expression
+				| "NOT" expression
+				| predicate
+				;
+
+	// predicate need (in select) and (like) form and (exists)
+	predicate := predicate comparisonOperator predicate
+			   | expressionAtom
+			   ;
+
+	expressionAtom  := constantNum
+					 | "STR_LITERAL"
+					 | columnName
+					 | expressionAtom mathOperator expressionAtom
+					 ;
+
+	constantNum := ["-"] positiveNum
+				 ;
+	
+	positiveNum := "NUMBER_CONSTANT"
+
+	comparisonOperator := "=="
+						| ">"
+						| "<"
+						| "<="
+						| ">="
+						| "!="
+						;
+
+	logicalOperator := "AND"
+					 | "OR"
+					 ;
+
+	mathOperator := "*"
+				  | "/"
+				  | "%"
+				  | "+"
+				  | "-"
+				  ;
+
+	
+}
+
+string trim(string& str)
+{
+	//trim white space at the very beginning and end
+	size_t start = 0, end = str.size() - 1;
+	while(str[start] == ' ')
+		++start;
+	while(str[end] == ' ')
+		--end;
+	return str.substr(start, end - start);
+}
+
+void run()
+{
+	string tempSql = "";
+	auto res = sql::analyze(trim(tempSql));
+	//cout 
+	return;
+}

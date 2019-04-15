@@ -2,7 +2,7 @@
 
 int main()
 {
-	std::string filename = "G:\\Git\\DB\\DB\\src\\sql.txt";
+	std::string filename = "G:\\Git\\DB\\DB\\src\\SQL.txt";
 	bool ok = false;
 	DB::lexer::Lexer lexer;
 	try { lexer.tokenize(filename); ok = true; }

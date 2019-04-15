@@ -100,7 +100,7 @@ namespace DB::lexer
 		{ "INT", type::INT }, 
 
 		/* special keyword */
-		{ "CHAR", type::CHAR }, { "VARCHAR", type::VARCHAR }, { "WILDCARD", type::WILDCARD },
+		{ "CHAR", type::CHAR }, { "VARCHAR", type::VARCHAR }, { "$", type::WILDCARD },
 		{ "NULL", type::NULL }, { "DISTINCT", type::DISTINCT }, { "VALUES", type::VALUES },
 		{ "CREATE", type::CREATE },{ "DROP", type::DROP },
 		{ "INSERT", type::INSERT },{ "DELETE", type::DELETE },{ "UPDATE", type::UPDATE },{ "SELECT", type::SELECT },
