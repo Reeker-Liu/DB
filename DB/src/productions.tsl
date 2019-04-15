@@ -15,33 +15,33 @@ namespace sql
 {
 
 	```tsl
-	terminate = enum class lexer::type
+	terminate = 
 	{
-		+, -, *, /, %,
+		"+", "-", "*", "/", "%",
 
 		NOT, AND, OR, 
 
-		==, !=, 
-		<, >, <=, >=, 
+		"==", "!=", 
+		"<", ">", "<=", ">=", 
 
-		=,
+		"=",
 
 		NUMBER_CONSTANT, ID, STR_LITERAL,
 
 		INT,
 
-		CHAR, VARCHAR, $,
+		CHAR, VARCHAR, "$",
 		NULL, DISTINCT, VALUES,
 		CREATE, DROP, INSERT, DELETE, UPDATE, SELECT, 
 		TABLE, "FROM", WHERE, JOIN,
 		ORDERBY, ASC, DESC, SET,
 		DEFAULT, PRIMARY_KEY, REFERENCES, 
 
-		,, ., ;,
-		?, :,
-		(, ),
-		[, ],
-		{, },
+		",", ".", ";",
+		"?", ":",
+		"(", ")",
+		"[", "]",
+		"{", "}",
 	};
 	token_type = lexer::Token;
 	get_type = lexer::getType;
@@ -66,6 +66,7 @@ namespace sql
 	// Data Definition Language
 
 	createTable := "CREATE" "TABLE" tableName createDefinitions
+				 ;
 
 	dropTable := "DROP" "TABLE" tableName
 			   ;
@@ -74,7 +75,7 @@ namespace sql
 					   ;
 
 	// need tableConstraint
-	createDefinition := "ID" columnDefinition     #columnDeclaration
+	createDefinition := "ID" columnDefinition
 					  ;
 
 	columnDefinition := dataType columnConstraint*
@@ -87,7 +88,7 @@ namespace sql
 
 	columnConstraint := "NOT" "NULL"
 					  | "DEFAULT" expression
-					  | "PK"
+					  | "PRIMARY_KEY"
 					  | referenceDefinition
 					  ;
 
@@ -101,7 +102,7 @@ namespace sql
 	deleteStatement := "DELETE" "FROM" tableName ["WHERE" expression]
 					 ;
 
-	updateStatement := "UPDATE" tableName "SET" updatedElement ["," updatedElement]* ["WHERE" expression]
+	updateStatement := "UPDATE" tableName "SET" updateElement ["," updateElement]* ["WHERE" expression]
 					 ;
 
 	selectStatement := "SELECT" ["DISTINCT"] selectElements [fromClause] ["WHERE" expression] [orderByClause]
@@ -110,13 +111,13 @@ namespace sql
 	// need selectStatement
 	insertStatementValue := "VALUES" "(" expressions ")" ["," "(" expressions ")"]*
 						  ;
-	updatedElement := columnName "=" (expression | "DEFAULT")
-						  
+	updateElement := columnName "=" {expression | "DEFAULT"}
+				   ;	  
 						  
 	// Select Statement"s Details
 	selectElement := "$"
-					| columnName ["," columnName]*
-					;
+				   | columnName ["," columnName]*
+				   ;
 
 	orderByClause := "ORDERBY" orderByExpression ["," orderByExpression]*
 				   ;
@@ -159,6 +160,7 @@ namespace sql
 				 ;
 	
 	positiveNum := "NUMBER_CONSTANT"
+				 ;
 
 	comparisonOperator := "=="
 						| ">"
@@ -178,8 +180,7 @@ namespace sql
 				  | "+"
 				  | "-"
 				  ;
-
-	
+	```
 }
 
 string trim(string& str)
