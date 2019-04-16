@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Node.h" />
     <ClInclude Include="src\lexer.h" />
     <ClInclude Include="src\dbexception.h" />
     <ClInclude Include="src\util.h" />
