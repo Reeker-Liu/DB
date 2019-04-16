@@ -122,7 +122,7 @@ namespace sql
 	orderByClause := "ORDERBY" orderByExpression ["," orderByExpression]*
 				   ;
 
-	orderByExpression := expression ["ASC"|"DESC"]
+	orderByExpression := expressionAtom ["ASC"|"DESC"]
 					   ;
 
 	fromClause := "FROM" tableName ["," tableName]
@@ -133,27 +133,30 @@ namespace sql
 	tableName := "ID"
 			   ;
 
-	columnName := ["ID" "."] "ID"
+	columnName := "ID" "." "ID"
+				| "ID"
 				;
 
 	expressions := expression ["," expression]*
 				 ;
 
+	left logicOp;
+	rank logicOpRank;
 
-	expression := expression logicalOperator expression
-				| "NOT" expression
+	expression := expression logicalOperator expression, logicOp logicOpRank 2
+				| "NOT" expression, logicOpRank 1
 				| predicate
 				;
 
 	// predicate need (in select) and (like) form and (exists)
-	predicate := predicate comparisonOperator predicate
+	predicate := expressionAtom comparisonOperator expressionAtom
 			   | expressionAtom
 			   ;
 
 	expressionAtom  := constantNum
 					 | "STR_LITERAL"
 					 | columnName
-					 | expressionAtom mathOperator expressionAtom
+					 | expressionAtom mathOperator expressionAto, left
 					 ;
 
 	constantNum := ["-"] positiveNum
@@ -161,7 +164,7 @@ namespace sql
 	
 	positiveNum := "NUMBER_CONSTANT"
 				 ;
-
+				 
 	comparisonOperator := "=="
 						| ">"
 						| "<"
@@ -170,16 +173,17 @@ namespace sql
 						| "!="
 						;
 
-	logicalOperator := "AND"
-					 | "OR"
+	logicalOperator := "AND", logicOp logicOpRank 2
+					 | "OR", logicOp logicOpRank 2
 					 ;
-
-	mathOperator := "*"
-				  | "/"
-				  | "%"
-				  | "+"
-				  | "-"
-				  ;
+	rank {
+		mathOperator := "*", 0
+					  | "/", 0
+					  | "%", 1
+					  | "+", 2
+					  | "-", 2
+					  ;
+    }
 	```
 }
 
