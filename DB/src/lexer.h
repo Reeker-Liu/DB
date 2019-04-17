@@ -47,7 +47,7 @@ namespace DB::lexer
 		ADD, SUB, MUL, DIV, MOD, 
 
 		/* logic operator */
-		NOT, AND, OR, 
+		AND, OR, 
 
 		/* compare operator */
 		EQ, NEQ, 
@@ -87,7 +87,7 @@ namespace DB::lexer
 		{ "+", type::ADD }, { "-", type::SUB }, { "*", type::MUL }, { "/", type::DIV }, { "%", type::MOD },
 
 		/* logic operator */
-		{ "NOT", type::NOT }, { "AND", type::AND }, { "OR", type::OR },
+		{ "AND", type::AND }, { "OR", type::OR },
 
 		/* compare operator */
 		{ "==", type::EQ }, { "!=", type::NEQ },
@@ -126,7 +126,7 @@ namespace DB::lexer
 		{ type::ADD, "+" }, { type::SUB, "-" }, { type::MUL, "*",  }, { type::DIV, "/",  }, { type::MOD, "%" },
 
 		/* logic operator */
-		{ type::NOT, "NOT" }, { type::AND, "AND" }, { type::OR, "OR" },
+		{ type::AND, "AND" }, { type::OR, "OR" },
 
 		/* compare operator */
 		{ type::EQ , "==" }, { type::NEQ, "!=" },

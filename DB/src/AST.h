@@ -1,44 +1,41 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <variant>
 
 namespace DB {
 
-	namespace DDL{
-		/*
-		*DDL now contains only create/drop table
-		*/
-		enum class column_t{ INT, CHAR, VARCHAR };
-
-		struct ColumnDef {
-			std::string name;
-			column_t type;
-			int len;
-			bool canNull;
-		}; // end struct Column
-
-		struct createInfo {
-			std::string name;
-			std::vector<ColumnDef> columns;
-			int pk; // -1 indicates no pk, or the index of pk column
-			//default value - DML Expr?
-			//references - DML IdExpr?
+	namespace VM{
+		enum class col_t_t { INT, CHAR, VARCHAR };
+		struct constraint_t_t { enum { PK = 1, FK = 2, NOT_NULL = 4, DEFAULT = 8, }; };
+		struct ColumnInfo {
+			std::string columnName;
+			col_t_t col_t_;
+			unsigned int str_len_;      // used when col_t_ = `CHAR` or `VARCHAR`
+			unsigned int constraint_t_;
+			std::string fkTable;
+			std::string defaultStr;
+			int defaultInt;
 		};
 
-		//droppedTable only need name
-	} //end namespace DDL
-	
+		bool is_PK(const std::string& tableName, const std::string& col_name) const;
+        bool is_FK(const std::string& tableName, const std::string& col_name) const;
+        bool is_not_null(const std::string& tableName, const std::string& col_name) const;
+        bool is_default_col(const std::string& tableName, const std::string& col_name) const;
+        ValueEntry get_default_value(const std::string& tableName, const std::string& col_name) const;
+
+		// onlt used when creating table
+        void insert_column(const std::string&, ColumnInfo*);
+
+	}
+
 
 	namespace DML{
-		enum class base_t_t{ ATOM, LOGICAL_OP, COMPARISON_OP,  };
-		enum class atom_t_t { ID, NUMERIC, STR, MATH_OP };
+		enum class base_t_t{ ATOM, LOGICAL_OP, COMPARISON_OP, ID, NUMERIC, STR, MATH_OP };
+		//enum class atom_t_t {  };
 		enum class logical_t_t{ AND, OR };
-		enum class comparison_t_t{  };
-		enum class math_t_t{ };
-		// enum numeric_t{ INT };  // extension for more numeric type
+		enum class comparison_t_t{ EQ, NEQ, LESS, GREATER, LEQ, GEQ, };
+		enum class math_t_t{ ADD, SUB, MUL, DIV, MOD, };
 
-		//virtual for all
 		struct BaseExpr{
 			BaseExpr(base_t_t base_t):base_t_(base_t){}
 			virtual ~BaseExpr() = 0;
@@ -47,54 +44,76 @@ namespace DB {
 			const base_t_t  base_t_;
 		};
 
-		struct LogicalOpExpr : public BaseExpr{
+		struct NonAtomExpr : public BaseExpr{
+			NonAtomExpr(base_t_t base_t):BaseExpr(base_t){}
+			virtual ~NonAtomExpr() = 0;
+			virtual void* getOutput() = 0;
+		}
+
+		struct LogicalOpExpr : public NonAtomExpr{
 			LogicalOpExpr(logical_t_t logical_t, LogicalOpExpr* left, LogicalOpExpr* right):
-				BaseExpr(base_t_t::LOGICAL_OP), logical_t_(logical_t), _left(left), _right(right){}
+				NonAtomExpr(base_t_t::LOGICAL_OP), logical_t_(logical_t), _left(left), _right(right){}
 			virtual ~LogicalOpExpr();
+			virtual void* getOutPut();
 
 			const logical_t_t logical_t_;
-			LogicalOpExpr* _left;
-			LogicalOpExpr* _right;
+			NonAtomExpr* _left;
+			NonAtomExpr* _right;
 		};
 
-		struct ComparisonOpExpr : public BaseExpr{
+		struct ComparisonOpExpr : public NonAtomExpr{
 			//left,right must be AtomExpr*
-			ComparisonOpExpr()
+			ComparisonOpExpr(comparison_t_t comparison_t, AtomExpr* left, AtomExpr* right):
+				NonAtomExpr(base_t_t::COMPARISON_OP),  comparison_t_(comparison_t), _left(left), _right(right){}
+			virtual ~ComparisonOpExpr();
+			virtual void* getOutPut();
 			
 			const comparison_t_t comparison_t_;
-			AtomExpr* left;
-			AtomExpr* right;
+			AtomExpr* _left;
+			AtomExpr* _right;
 		};
 
 		struct AtomExpr : public BaseExpr{
-			AtomExpr(atom_t_t atom_t):BaseExpr(bast_t_t::ATOM),atom_t_(atom_t){}
+			AtomExpr(base_t_t base_t):BaseExpr(bast_t){}
 			virtual ~AtomExpr() = 0;
-
-			const atom_t_t atom_t_;
+			virtual void* getOutPut() = 0;
 		};
 
 		struct MathOpExpr : public AtomExpr{
-			
+			MathOpExpr(math_t_t math_t, AtomExpr* left, AtomExpr* right):
+				AtomExpr(base_t_t::MATH_OP), math_t_(math_t), _left(left), _right(right){}
+			virtual ~MathOpExpr();
+			virtual void* getOutPut();
 
 			const math_t_t math_t_;
-			AtomExpr* left;
-			AtomExpr* right;
+			AtomExpr* _left;
+			AtomExpr* _right;
 		};
 
 		struct IdExpr : public AtomExpr {
-			
+			IdExpr(std::string& columnName, std::string& tableName = ""):
+				AtomExpr(base_t_t::ID), _tableName(tableName), _columnName(columnName){}
+			virtual ~IdExpr();
+			virtual void* getOutPut();
 
-			std::string tableName;
-			std::string columnName;
+			std::string _tableName;
+			std::string _columnName;
 		};
 
 		struct NumericExpr : public AtomExpr{
-			// numeric_t type; // extension for more numeric type
-			int value;	// the most precise type of all
+			NumericExpr(int value):
+				AtomExpr(base_t_t::NUMERIC), _value(value){}
+			virtual ~NumericExpr();
+
+			int _value;
 		};
 
 		struct StrExpr : public AtomExpr{
-			std::string value;
+			StrExpr(std::string& value):
+				AtomExpr(base_t_t::STR), _value(value){}
+			virtual ~StrExpr();
+
+			std::string _value;
 		};
 
 
@@ -102,7 +121,7 @@ namespace DB {
 		struct Element{
 			std::string name;
 			bool isDefault;
-			BaseExpr* expr;
+			AtomExpr* valueExpr;
 		};
 		class InsertInfo{
 			std::string sourceTable;
