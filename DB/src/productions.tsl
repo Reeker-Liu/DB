@@ -96,7 +96,7 @@ namespace sql
 						 ;
 
 	// Data Manipulation Language
-	insertStatement := "INSERT" tableName ["(" "ID" ["," "ID"]* ")"] insertStatementValue
+	insertStatement := "INSERT" tableName ["(" "ID" ["," "ID"]* ")"] insertElement
 					 ;
 
 	deleteStatement := "DELETE" "FROM" tableName ["WHERE" expression]
@@ -105,18 +105,18 @@ namespace sql
 	updateStatement := "UPDATE" tableName "SET" updateElement ["," updateElement]* ["WHERE" expression]
 					 ;
 
-	selectStatement := "SELECT" ["DISTINCT"] selectElements [fromClause] ["WHERE" expression] [orderByClause]
+	selectStatement := "SELECT" ["DISTINCT"] selectElement [fromClause] ["WHERE" expression] [orderByClause]
 					 ;
 
 	// need selectStatement
-	insertStatementValue := "VALUES" "(" expressions ")" ["," "(" expressions ")"]*
+	insertElement := "VALUES" "(" expressionAtoms ")" ["," "(" expressionAtoms ")"]*
 						  ;
-	updateElement := columnName "=" {expression | "DEFAULT"}
+	updateElement := columnName "=" {expressionAtom | "DEFAULT"}
 				   ;	  
 						  
 	// Select Statement"s Details
 	selectElement := "$"
-				   | columnName ["," columnName]*
+				   | expressionAtom ["," expressionAtom]*
 				   ;
 
 	orderByClause := "ORDERBY" orderByExpression ["," orderByExpression]*
@@ -137,7 +137,7 @@ namespace sql
 				| "ID"
 				;
 
-	expressions := expression ["," expression]*
+	expressionAtoms := expression ["," expression]*
 				 ;
 
 	left logicOp;
