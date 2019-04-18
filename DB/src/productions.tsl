@@ -71,7 +71,7 @@ namespace sql
 	dropTable := "DROP" "TABLE" tableName
 			   ;
 
-	createDefinitions := "(" createDefinition ["," createDefinition]* ")"
+	createDefinitions := "(" createDefinition [{"," createDefinition}*] ")"
 					   ;
 
 	// need tableConstraint
@@ -96,30 +96,30 @@ namespace sql
 						 ;
 
 	// Data Manipulation Language
-	insertStatement := "INSERT" tableName ["(" "ID" ["," "ID"]* ")"] insertElement
+	insertStatement := "INSERT" tableName ["(" "ID" [{"," "ID"}*] ")"] insertElement
 					 ;
 
 	deleteStatement := "DELETE" "FROM" tableName ["WHERE" expression]
 					 ;
 
-	updateStatement := "UPDATE" tableName "SET" updateElement ["," updateElement]* ["WHERE" expression]
+	updateStatement := "UPDATE" tableName "SET" updateElement [{"," updateElement}*] ["WHERE" expression]
 					 ;
 
 	selectStatement := "SELECT" ["DISTINCT"] selectElement [fromClause] ["WHERE" expression] [orderByClause]
 					 ;
 
 	// need selectStatement
-	insertElement := "VALUES" "(" expressionAtoms ")" ["," "(" expressionAtoms ")"]*
+	insertElement := "VALUES" "(" expressionAtoms ")" [{"," "(" expressionAtoms ")"}*]
 						  ;
 	updateElement := columnName "=" {expressionAtom | "DEFAULT"}
 				   ;	  
 						  
 	// Select Statement"s Details
 	selectElement := "$"
-				   | expressionAtom ["," expressionAtom]*
+				   | expressionAtom [{"," expressionAtom}*]
 				   ;
 
-	orderByClause := "ORDERBY" orderByExpression ["," orderByExpression]*
+	orderByClause := "ORDERBY" orderByExpression [{"," orderByExpression}*]
 				   ;
 
 	orderByExpression := expressionAtom ["ASC"|"DESC"]
@@ -137,14 +137,12 @@ namespace sql
 				| "ID"
 				;
 
-	expressionAtoms := expression ["," expression]*
+	expressionAtoms := expressionAtom [{"," expressionAtom}*]
 				 ;
 
 	left logicOp;
-	rank logicOpRank;
 
-	expression := expression logicalOperator expression, logicOp logicOpRank 2
-				| "NOT" expression, logicOpRank 1
+	expression := expression logicalOperator expression, logicOp
 				| predicate
 				;
 
@@ -173,8 +171,8 @@ namespace sql
 						| "!="
 						;
 
-	logicalOperator := "AND", logicOp logicOpRank 2
-					 | "OR", logicOp logicOpRank 2
+	logicalOperator := "AND", logicOp
+					 | "OR", logicOp
 					 ;
 	rank {
 		mathOperator := "*", 0
