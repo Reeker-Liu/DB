@@ -12,6 +12,19 @@ namespace DB
 		virtual void printEx() const = 0;
 	};
 
+	class DB_Exception : public DB_Base_Exception
+	{
+		const std::string _msg;
+		virtual void printEx() const { std::cout << (*this) << std::endl; }
+	public:
+		DB_Exception(std::string msg)
+			:_msg(std::move(msg)) {}
+		friend std::ostream& operator<<(std::ostream& os, const DB_Exception& e)
+		{
+			os << e._msg ;
+			return os;
+		}
+	};
 
 	/*
 	 * Universal Exception class.
@@ -31,6 +44,7 @@ namespace DB
 			return os;
 		}
 	};
+
 
 	class DB_Runtime_Exception
 	{
