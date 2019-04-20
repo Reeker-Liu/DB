@@ -19,13 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\ast.h" />
+    <ClInclude Include="src\query.h" />
     <ClInclude Include="src\lexer.h" />
     <ClInclude Include="src\dbexception.h" />
     <ClInclude Include="src\util.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\ast.cpp" />
+    <ClCompile Include="src\query.cpp" />
     <ClCompile Include="src\lexer.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>

@@ -22,7 +22,7 @@ namespace DB::VM {
 	{
 
 	};
-	RetValue getValue(Row* row, const std::string& tableName, const std::string& columnName) { return 0; }
+	RetValue getValue(const Row* row, const std::string& tableName, const std::string& columnName) { return 0; }
 
 
 	//bool VM::check_str_len(str, str_t);
@@ -34,9 +34,6 @@ namespace DB::VM {
 
 namespace DB::Query {
 
-	//static hash<talbeName, tableinfo>; mutli-threading
-
-	//===========================================================
 #pragma region DDL
 
 	enum class col_t_t { INT, CHAR, VARCHAR };
@@ -57,6 +54,19 @@ namespace DB::Query {
 	using DropTableInfo = std::string;
 
 
+	//===========================================================
+
+	//static hash<talbeName, tableinfo>; mutli-threading
+
+	ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName)
+	{
+		//to do
+		ColumnInfo info;
+		info.col_t_ = col_t_t::INT;
+		return info;
+	}
+
+
 #pragma endregion
 
 	//===========================================================
@@ -68,10 +78,10 @@ namespace DB::Query {
 	enum class logical_t_t { AND, OR };
 	enum class comparison_t_t { EQ, NEQ, LESS, GREATER, LEQ, GEQ, };
 	enum class math_t_t { ADD, SUB, MUL, DIV, MOD, };
-	std::string base2str[] = { "LOGICAL_OP", "COMPARISON_OP", "ID", "NUMERIC", "STR", "MATH_OP" };
-	std::string logical2str[] = { "AND", "OR" };
-	std::string comparison2str[] = { "==", "!=", "<", ">", "<=", ">=" };
-	std::string math2str[] = { "+", "-", "*", "/", "%" };
+	const std::string base2str[] = { "LOGICAL_OP", "COMPARISON_OP", "ID", "NUMERIC", "STR", "MATH_OP" };
+	const std::string logical2str[] = { "AND", "OR" };
+	const std::string comparison2str[] = { "==", "!=", "<", ">", "<=", ">=" };
+	const std::string math2str[] = { "+", "-", "*", "/", "%" };
 
 	using RetValue = std::variant<bool, int, std::string>;
 
@@ -161,11 +171,9 @@ namespace DB::Query {
 	//===========================================================
 	//visit functions
 
-	inline int numericOp(int op1, int op2, math_t_t math_t);
-	inline bool comparisonOp(int op1, int op2, comparison_t_t comparison_t);
-
 	/*
 	*output visit, output the ast to the given ostream
+	*regardless of validity
 	*/
 	void outputVisit(const BaseExpr* root, std::ostream& os);
 
@@ -180,29 +188,31 @@ namespace DB::Query {
 	*		string TableA.name and number 123 don't matched either
 	*
 	*for any dismatching, throw DB_Exception
-	*if passing, it is guaranteed VmVisit will never encounter unexcepted cases
+	*if passing, it is guaranteed other visit function will never encounter unexcepted cases
 	*
 	*the visited expr won't be modified at present,
 	*may be modified for optimization in the future
 	*/
 
 	//check WHERE clause(expression)
-	void checkVisit(BaseExpr* root) throw (DB_Exception);
+	void checkVisit(const BaseExpr* root);
 
 	//check others(expressionAtom)
-	void checkVisit(AtomExpr* root) throw (DB_Exception);
+	void checkVisit(const AtomExpr* root);
 
 
 	/*
 	*vm visit, for VM
-	*guarantee no except (which is handled by check visit in parsing phase)
+	*guarantee no except
 	*/
+	inline int numericOp(int op1, int op2, math_t_t math_t);
+	inline bool comparisonOp(int op1, int op2, comparison_t_t comparison_t);
 
 	//for WHERE clause(expression), used for filtering values of a row
-	bool visit(const BaseExpr* root, const VM::Row* row) noexcept;
+	bool vmVisit(const BaseExpr* root, const VM::Row* row);
 
-	//for others(expressionAtom), used for computing math/string expression or row info
-	RetValue visit(const AtomExpr* root, const VM::Row* row = nullptr) noexcept;
+	//for others(expressionAtom), used for computing math/string expression and data in the specified row
+	RetValue vmVisit(const AtomExpr* root, const VM::Row* row = nullptr);
 
 	
 

@@ -23,10 +23,11 @@
 
 - //supplement development documentation
 
-- check visitor
+- optimize visit
 - struct and interface for tableInfo
 - table structure buffer
-- check CHAR and VARCHAR length according to table structure
+- implement getColumnType func
+- //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 - debug/log
 
 
