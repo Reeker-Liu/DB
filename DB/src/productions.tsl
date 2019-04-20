@@ -17,7 +17,7 @@ using namespace DB::AST;
 
 namespace sql
 {
-
+	ostream &print_symbol(const long long s);
 	```tsl
 	terminate = 
 	{
@@ -63,9 +63,9 @@ namespace sql
 	using updateStatement = UpdateInfo;
 	using deleteStatement = DeleteInfo;
 	using tableName = std::string;
-	using createDefinitions = 
-	using dropTable = 
-	using createDefinition = 
+	using createDefinitions = std::vector<ColumnInfo*>;
+	using dropTable = DropTableInfo;
+	using createDefinition = ColumnInfo*;
 	using columnDefinition = unsigned int;
 	using dataType = col_t_t;
 	using columnConstraint = constraint_t_t;
@@ -86,6 +86,13 @@ namespace sql
 	using logicalOperator = logical_t_t;
 	using mathOperator = math_t_t;
 
+	back = {
+        cout << "REDUCE: ";
+        print_symbol(left.type) << ":= ";
+        for (auto &s: right)
+            print_symbol(s.type);
+        cout << endl << endl;
+    };
 
 	sqlStatement := ddlStatement
 				  | dmlStatement
@@ -221,6 +228,12 @@ namespace sql
 					  ;
     }
 	```
+	ostream &print_symbol(const long long s) {
+        if (s < 0)
+            return std::cout << utils::type_name_map[s] << " ";
+        else
+            return std::cout << std::quoted(utils::type_name_map[s]) << " ";
+    }
 }
 
 string trim(string& str)
