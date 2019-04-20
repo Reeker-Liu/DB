@@ -6,10 +6,14 @@ alias
 */
 
 #include <iostream>
+#include <variant>
 #include <vector>
 #include <string>
 
+#include "ast.h"
+
 using namespace std;
+using namespace DB::AST;
 
 namespace sql
 {
@@ -19,7 +23,7 @@ namespace sql
 	{
 		"+", "-", "*", "/", "%",
 
-		NOT, AND, OR, 
+		AND, OR, 
 
 		"==", "!=", 
 		"<", ">", "<=", ">=", 
@@ -45,6 +49,42 @@ namespace sql
 	};
 	token_type = lexer::Token;
 	get_type = lexer::getType;
+	pass_info_struct = {
+        
+    };
+
+	using sqlStatement = 
+	using ddlStatement = 
+	using dmlStatement = 
+	using createTable = 
+	using dropTable = 
+	using selectStatement = SelectInfo;
+	using insertStatement = InsertInfo;
+	using updateStatement = UpdateInfo;
+	using deleteStatement = DeleteInfo;
+	using tableName = std::string;
+	using createDefinitions = 
+	using dropTable = 
+	using createDefinition = 
+	using columnDefinition = unsigned int;
+	using dataType = col_t_t;
+	using columnConstraint = constraint_t_t;
+	using insertElement = Elements;
+	using updateElement = Elements;
+	using selectElement = Elements;
+	using fromClause = std::pair<Source, bool>;
+	using orderByClause = std::vector<orderby_element>;
+	using orderByExpression = orderby_element;
+	using columnName = std::pair<std::string, std::string>; // table.column
+	using expressionAtoms = std::vector<BaseExpr*>;
+	using expression = BaseExpr*;
+	using predicate = BaseExpr*;
+	using expressionAtom = AtomExpr*;
+	using constantNum = int;
+	using positiveNum = int;
+	using comparisonOperator = comparison_t_t;
+	using logicalOperator = logical_t_t;
+	using mathOperator = math_t_t;
 
 
 	sqlStatement := ddlStatement
@@ -87,13 +127,11 @@ namespace sql
 			  ;
 
 	columnConstraint := "NOT" "NULL"
-					  | "DEFAULT" expression
+					  | "DEFAULT" expressionAtom
 					  | "PRIMARY_KEY"
-					  | referenceDefinition
+					  | "REFERENCES" tableName "(" "ID" ")"
 					  ;
 
-	referenceDefinition := "REFERENCES" tableName "(" "ID" ")"
-						 ;
 
 	// Data Manipulation Language
 	insertStatement := "INSERT" tableName ["(" "ID" [{"," "ID"}*] ")"] insertElement
