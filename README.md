@@ -1,6 +1,6 @@
 # Introduction
 
-> This project is front end part of Database miniDB for course software_engineering
+> This project is front end part of database-miniDB for the course software engineering
 
 #### Other parts of the database
 - https://github.com/rsy56640/xjbDB
@@ -26,7 +26,7 @@
 - optimize visit
 - struct and interface for tableInfo
 - table structure buffer
-- implement getColumnType func
+- implement getColumnInfo func
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 - debug/log
 
@@ -34,13 +34,13 @@
 
 ### Expansibility
 
-- source in DML op struct should be a class, decompose into ExprTableSource、JoinTableSource、SubqueryTableSource
+- source of DML op structs should be a class, such as ExprTableSource、JoinTableSource、SubqueryTableSource
 
 
 
 ### optimization
 
-- optimize expression structure when CheckVisitor visiting
+- optimize expression structure when check visiting
 
 
 
