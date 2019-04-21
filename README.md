@@ -71,5 +71,5 @@
 
 > requirements need supporting by other parts
 
-- needed interfaces and structs are in namespace VM in [query.h](github.com/Endless-Fighting/DB/blob/master/DB/src/query.h)
+- needed interfaces and structs are in namespace VM in [query.h](https://github.com/Endless-Fighting/DB/blob/master/DB/src/query.h)
 - the table structure of joined tables should keep the original info about columns, such that for TableA TableB with both PK id, the tmp joined table should support that using TableA.id and TableB.id can fetch the same return value
