@@ -53,18 +53,17 @@ namespace sql
         
     };
 
-	using sqlStatement = 
-	using ddlStatement = 
-	using dmlStatement = 
-	using createTable = 
-	using dropTable = 
+	using sqlStatement = SQLValue;
+	using ddlStatement = SQLValue;
+	using dmlStatement = SQLValue;
+	using createTable = CreateTableInfo;
+	using dropTable = DropTableInfo;
 	using selectStatement = SelectInfo;
 	using insertStatement = InsertInfo;
 	using updateStatement = UpdateInfo;
 	using deleteStatement = DeleteInfo;
 	using tableName = std::string;
 	using createDefinitions = std::vector<ColumnInfo*>;
-	using dropTable = DropTableInfo;
 	using createDefinition = ColumnInfo*;
 	using columnDefinition = unsigned int;
 	using dataType = col_t_t;
