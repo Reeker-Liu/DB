@@ -209,10 +209,9 @@ namespace DB::Query {
 		AtomExpr* valueExpr;
 	};
 	using Elements = std::vector<Element>;
-	using Source = std::vector<std::string>;
 	struct InsertInfo {
 		std::string sourceTable;
-		std::vector<Elements> values;
+		Elements values;
 	};
 
 	struct UpdateInfo {
@@ -226,13 +225,15 @@ namespace DB::Query {
 		BaseExpr* whereExpr;
 	};
 
-	//	orderExpr, isASC
-	using OrderbyElement = std::pair<BaseExpr*, bool>;
+	
+	using Source = std::vector<std::string>;
+	using OrderbyElement = std::pair<BaseExpr*, bool>;	//	orderExpr, isASC
 	struct SelectInfo {
 		bool join;
 		Source sourceTables;
-		Elements elements;
-		BaseExpr* whereExpr;
+		std::vector<std::string> columns;
+		std::vector<BaseExpr*> elements;
+		BaseExpr* whereExpr;		
 		std::vector<OrderbyElement> orders;
 	};
 
