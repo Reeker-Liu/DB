@@ -176,10 +176,10 @@ namespace DB::Query {
 	*/
 
 	//check WHERE clause(expression)
-	void checkVisit(const BaseExpr* root);
+	void checkVisit(const BaseExpr* root, const std::string tableName = "");
 
 	//check others(expressionAtom)
-	void checkVisit(const AtomExpr* root);
+	void checkVisit(const AtomExpr* root, const std::string tableName = "");
 
 
 	/*
@@ -211,7 +211,7 @@ namespace DB::Query {
 	using Elements = std::vector<Element>;
 	struct InsertInfo {
 		std::string sourceTable;
-		Elements values;
+		Elements elements;
 	};
 
 	struct UpdateInfo {
@@ -231,10 +231,9 @@ namespace DB::Query {
 	struct SelectInfo {
 		bool join;
 		Source sourceTables;
-		std::vector<std::string> columns;
-		std::vector<BaseExpr*> elements;
+		Elements elements;	//if empty, $ are used, all columns are needed
 		BaseExpr* whereExpr;		
-		std::vector<OrderbyElement> orders;
+		std::vector<OrderbyElement> orderbys;
 	};
 
 #pragma endregion

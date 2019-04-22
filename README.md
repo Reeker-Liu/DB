@@ -24,7 +24,7 @@
 - //supplement development documentation
 - optimize visit
 - check pk nums
-- tsl
+- tsl delay check till know tablename
 - op tree for select
 - RetValue need bool?
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)

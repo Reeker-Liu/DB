@@ -124,7 +124,7 @@ namespace DB {
 		enum class check_t_t { INT, STRING, BOOL };
 		const std::string check2str[] = { "INT", "STRING", "BOOL" };
 
-		check_t_t _checkVisit(const BaseExpr* root)
+		check_t_t _checkVisit(const BaseExpr* root, const std::string& tableName)
 		{
 			base_t_t base_t = root->base_t_;
 			switch (base_t)
@@ -132,8 +132,8 @@ namespace DB {
 			case DB::Query::base_t_t::LOGICAL_OP:
 			{
 				const LogicalOpExpr* logicalPtr = static_cast<const LogicalOpExpr*>(root);
-				check_t_t left_t = _checkVisit(logicalPtr->_left);
-				check_t_t right_t = _checkVisit(logicalPtr->_right);
+				check_t_t left_t = _checkVisit(logicalPtr->_left, tableName);
+				check_t_t right_t = _checkVisit(logicalPtr->_right, tableName);
 				std::string op = logical2str[int(logicalPtr->logical_t_)];  //used for exception info
 
 				//RetValue here must be bool
@@ -144,8 +144,8 @@ namespace DB {
 			case DB::Query::base_t_t::COMPARISON_OP:
 			{
 				const ComparisonOpExpr* comparisonPtr = static_cast<const ComparisonOpExpr*>(root);
-				check_t_t left_t = _checkVisit(comparisonPtr->_left);
-				check_t_t right_t = _checkVisit(comparisonPtr->_right);
+				check_t_t left_t = _checkVisit(comparisonPtr->_left, tableName);
+				check_t_t right_t = _checkVisit(comparisonPtr->_right, tableName);
 				std::string op = comparison2str[int(comparisonPtr->comparison_t_)];
 
 				//RetValue here must be int / str
@@ -171,12 +171,16 @@ namespace DB {
 			}
 		}
 		
-		void checkVisit(const BaseExpr* root)
+		void checkVisit(const BaseExpr* root, const std::string tableName = "")
 		{
-			_checkVisit(root);
+#ifdef DEBUG
+			if (!root)
+				throw DB_Exception("BaseExpr* root is nullptr");
+#endif // DEBUG
+			_checkVisit(root, tableName);
 		}
 
-		check_t_t _checkVisit(const AtomExpr* root)
+		check_t_t _checkVisit(const AtomExpr* root, const std::string& tableName)
 		{
 			base_t_t base_t = root->base_t_;
 			switch (base_t)
@@ -184,8 +188,8 @@ namespace DB {
 			case DB::Query::base_t_t::MATH_OP:
 			{
 				const MathOpExpr* mathPtr = static_cast<const MathOpExpr*>(root);
-				check_t_t left_t = _checkVisit(mathPtr->_left);
-				check_t_t right_t = _checkVisit(mathPtr->_right);
+				check_t_t left_t = _checkVisit(mathPtr->_left, tableName);
+				check_t_t right_t = _checkVisit(mathPtr->_right, tableName);
 				std::string op = math2str[int(mathPtr->math_t_)];	//used for exception info
 
 				if (left_t == right_t)
@@ -224,9 +228,13 @@ namespace DB {
 			}
 		}
 
-		void checkVisit(const AtomExpr* root)
+		void checkVisit(const AtomExpr* root, const std::string tableName = "")
 		{
-			_checkVisit(root);
+#ifdef DEBUG
+			if (!root)
+				throw DB_Exception("AtomExpr* root is nullptr");
+#endif // DEBUG
+			_checkVisit(root, tableName);
 		}
 
 
@@ -338,6 +346,10 @@ namespace DB {
 
 		bool vmVisit(const BaseExpr* root, const VM::Row* row)
 		{
+#ifdef DEBUG
+			if (!root)
+				throw DB_Exception("BaseExpr* root is nullptr");
+#endif // DEBUG
 			return _vmVisit(root, row);
 		}
 
@@ -398,6 +410,10 @@ namespace DB {
 
 		RetValue vmVisit(const AtomExpr* root, const VM::Row* row)
 		{
+#ifdef DEBUG
+			if (!root)
+				throw DB_Exception("AtomExpr* root is nullptr");
+#endif // DEBUG
 			return _vmVisit(root, row);
 		}
 

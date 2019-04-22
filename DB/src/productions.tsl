@@ -71,7 +71,7 @@ namespace sql
 	using insertElement = Elements;
 	using updateElements = Elements;
 	using updateElement = Element;
-	using selectElement = Element;
+	using selectElements = Elements;
 	using fromClause = std::pair<Source, bool>;	//tables, join
 	using orderByClause = std::vector<orderby_element>;
 	using orderByExpression = orderby_element;
@@ -212,16 +212,16 @@ namespace sql
 						{
 							columnNames.push_back(get<string>(get<Token>(right[i].object)._token));
 						}
-						auto& values = get<Elements>(right[size-1].object);
-						if(columnNames.size() != values.size())
-							throw DB_Exception("the number of columns and values don't match");
+						auto& elements = get<Elements>(right[size-1].object);
+						if(columnNames.size() != elements.size())
+							throw DB_Exception("the number of columns and elements don't match");
 						
-						for(size_t i = 0; i < values.size(); ++)
+						for(size_t i = 0; i < elements.size(); ++)
 						{
-							values[i].name = columnNames[i];
+							elements[i].name = columnNames[i];
 						}
 						l.sourceTable = get<string>(right[1].object);
-						l.values = values;
+						l.elements = elements;
 					 }
 					 ;
 
@@ -242,6 +242,7 @@ namespace sql
 					 {
 						 auto& l = std::get<UpdateInfo>(left.object);
 						 l.sourceTable = get<string>(right[1].object);
+						 l.elements = get<Elements>(right[3].object);
 						 if(right.size() == 6)
 						 {
 							 l.whereExpr = get<BaseExpr*>(right[5].object);
@@ -252,7 +253,30 @@ namespace sql
 					 ;
 
 	// need  ["DISTINCT"]
-	selectStatement := "SELECT" selectElement [fromClause] ["WHERE" expression] [orderByClause]
+	selectStatement := "SELECT" selectElements fromClause ["WHERE" expression] [orderByClause]
+					 {
+						 auto& l = std::get<SelectInfo>(left.object);
+						 l.elements = get<Elements>(right[1].object);
+						 auto& from = get<pair<Source, bool>>(right[2].object);
+						 l.sourceTables = from->first;
+						 l.join = from->second;
+						 size_t size = right.size();
+						 size_t i = 2;
+						 while(i < size)
+						 {
+							 if(auto whereExpr = get_if<BaseExpr*>(right[i].object))
+							 {
+								 l.whereExpr = *whereExpr;
+								 outputVisit(l.whereExpr);
+								 checkVisit(l.whereExpr);
+							 }
+							 else if(auto orderbys = get_if<vector<orderby_element>>(right[i].object))
+							 {
+								 l.orderbys = *orderbys;
+							 }
+							 ++i;
+						 }
+					 }
 					 ;
 
 	// need selectStatement
@@ -301,12 +325,39 @@ namespace sql
 				   ;	  
 						  
 	// Select Statement"s Details
-	selectElement := "$",
+	selectElements := "$",
 				   {
-					   //need change
 					   //empty elements means all, checked in statement
 				   }
 				   | expressionAtom [{"," expressionAtom}*]
+				   {
+					   auto& l = std::get<Elements>(left.object);
+					   size_t size = right.size();
+					   for(size_t i = 0; i < size; i += 2)
+					   {
+							Element ele;
+							ele.valueExpr = get<BaseExpr*>(right[i].object)
+							outputVisit(l.valueExpr);
+							checkVisit(l.valueExpr);
+							if(valueExpr->base_t_ == base_t_t::ID)
+							{
+								IdExpr* idPtr = static_cast<IdExpr*>(ele.valueExpr);
+								if(idPtr->_tableName.empty())
+								{
+									ele.name = idPtr->_columnName;
+								}
+								else
+								{
+									ele.name = idPtr->_tableName + "." + idPtr->_columnName;
+								}
+							}
+							else
+							{
+								ele.name = "Column" + to_string(i);
+							}
+						   	l.push_back(ele);
+					   }
+				   }
 				   ;
 
 	orderByClause := "ORDERBY" orderByExpression [{"," orderByExpression}*], =
