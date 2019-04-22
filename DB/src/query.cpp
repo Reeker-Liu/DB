@@ -385,6 +385,8 @@ namespace DB {
 			case DB::Query::base_t_t::ID:
 			{
 				const IdExpr* idPtr = static_cast<const IdExpr*>(root);
+				if (!row)
+					throw DB_Exception("value of record cannot be used here");
 				return VM::getValue(row, idPtr->_tableName, idPtr->_columnName);
 			}
 #ifdef DEBUG

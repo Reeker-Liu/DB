@@ -3,71 +3,52 @@
 #include <vector>
 #include <variant>
 #include <optional>
-
-
-namespace DB::VM {
-
-	using RetValue = std::variant<bool, int, std::string>;
-
-	bool is_PK(const std::string& tableName, const std::string& col_name);
-	bool is_FK(const std::string& tableName, const std::string& col_name);
-	bool is_not_null(const std::string& tableName, const std::string& col_name);
-	bool is_default_col(const std::string& tableName, const std::string& col_name);
-	RetValue get_default_value(const std::string& tableName, const std::string& col_name);
-
-	// onlt used when creating table
-	//void insert_column(const std::string&, ColumnInfo*);
-
-	struct Row
-	{
-
-	};
-	RetValue getValue(const Row* row, const std::string& tableName, const std::string& columnName) { return 0; }
-
-
-	//bool VM::check_str_len(str, str_t);
-	//enum class str_t { ... };
-
-	//std::optional<TableInfo> 
-}	//end namespace DB::VM
-
+#include <unordered_map>
+#include "VM.h"
+#include "table.h"
+#include "dbexception.h"
 
 namespace DB::Query {
 
-#pragma region DDL
+	//need locks for mutli-threading
+	static std::unordered_map<std::string, TableInfo> tableBuffer;
 
-	enum class col_t_t { INT, CHAR, VARCHAR };
-	struct ColumnInfo {
-		std::string columnName;
-		col_t_t col_t_;
-		unsigned int str_len_;      // used when col_t_ = `CHAR` or `VARCHAR`
-		unsigned int constraint_t_;		//constraint_t_t { PK = 1, FK = 2, NOT_NULL = 4, DEFAULT = 8, }
-		std::string fkTable;
-		std::string defaultStr;
-		int defaultInt;
-	};
-	struct CreateTableInfo
+	TableInfo getTableInfo(const std::string& tableName)
 	{
-		std::string tableName;
-		std::vector<ColumnInfo*> columnInfos;
-	};
-	using DropTableInfo = std::string;
-
-
-	//===========================================================
-
-	//static hash<talbeName, tableinfo>; mutli-threading
+		if (tableBuffer.find(tableName) == tableBuffer.end())
+		{
+			if (auto table = VM::getTableInfo(tableName))
+			{
+				tableBuffer[table->tableName] = table.value();
+			}
+			else
+			{
+				throw DB_Exception("no such table \"" + tableName + "\"");
+			}
+		}
+		return tableBuffer[tableName];
+	}
 
 	ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName)
 	{
-		//to do
-		ColumnInfo info;
-		info.col_t_ = col_t_t::INT;
-		return info;
+		
+		TableInfo table = getTableInfo(tableName);
+		auto& columns = table.columnInfos;
+		for (auto& column : columns)
+		{
+			if (column.columnName == columnName)
+				return column;
+		}
+		throw DB_Exception("no such column \"" + columnName + "\" in \"" + tableName + "\"");
 	}
 
 
-#pragma endregion
+
+	//===========================================================
+	//DDL
+	using CreateTableInfo = TableInfo;
+	using DropTableInfo = std::string;
+
 
 	//===========================================================
 #pragma region AST
@@ -245,13 +226,14 @@ namespace DB::Query {
 		BaseExpr* whereExpr;
 	};
 
+	//	orderExpr, isASC
 	using OrderbyElement = std::pair<BaseExpr*, bool>;
 	struct SelectInfo {
 		bool join;
 		Source sourceTables;
 		Elements elements;
 		BaseExpr* whereExpr;
-		std::vector<OrderbyElement> orders;	//tuple<columnName, isASC>
+		std::vector<OrderbyElement> orders;
 	};
 
 #pragma endregion

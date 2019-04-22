@@ -22,7 +22,9 @@
     <ClInclude Include="src\query.h" />
     <ClInclude Include="src\lexer.h" />
     <ClInclude Include="src\dbexception.h" />
+    <ClInclude Include="src\table.h" />
     <ClInclude Include="src\util.h" />
+    <ClInclude Include="src\VM.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\query.cpp" />

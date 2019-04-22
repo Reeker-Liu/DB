@@ -64,7 +64,7 @@ namespace DB::lexer
 
 		/* special keyword */
 		CHAR, VARCHAR, WILDCARD,
-		NULL, DISTINCT, VALUES,
+		NOT_NULL, DISTINCT, VALUES,
 		CREATE, DROP, INSERT, DELETE, UPDATE, SELECT, 
 		TABLE, FROM, WHERE, JOIN,
 		ORDERBY, ASC, DESC, SET,
@@ -101,7 +101,7 @@ namespace DB::lexer
 
 		/* special keyword */
 		{ "CHAR", type::CHAR }, { "VARCHAR", type::VARCHAR }, { "$", type::WILDCARD },
-		{ "NULL", type::NULL }, { "DISTINCT", type::DISTINCT }, { "VALUES", type::VALUES },
+		{ "NN", type::NOT_NULL }, { "DISTINCT", type::DISTINCT }, { "VALUES", type::VALUES },
 		{ "CREATE", type::CREATE },{ "DROP", type::DROP },
 		{ "INSERT", type::INSERT },{ "DELETE", type::DELETE },{ "UPDATE", type::UPDATE },{ "SELECT", type::SELECT },
 		{ "TABLE", type::TABLE },{ "FROM", type::FROM },{ "WHERE", type::WHERE },{ "JOIN", type::JOIN },
@@ -140,7 +140,7 @@ namespace DB::lexer
 
 		/* special keyword */
 		{ type::CHAR, "CHAR" }, { type::VARCHAR, "VARCHAR" }, { type::WILDCARD, "WILDCARD" },
-		{ type::NULL, "NULL" }, { type::DISTINCT, "DISTINCT" }, { type::VALUES, "VALUES" },
+		{ type::NOT_NULL, "NOT_NULL" }, { type::DISTINCT, "DISTINCT" }, { type::VALUES, "VALUES" },
 		{ type::CREATE, "CREATE" },{ type::DROP, "DROP" },
 		{ type::INSERT, "INSERT" },{ type::DELETE, "DELETE" },{ type::UPDATE, "UPDATE" },{ type::SELECT, "SELECT" },
 		{ type::TABLE, "TABLE" },{ type::FROM, "FROM" },{ type::WHERE, "WHERE" },{ type::JOIN, "JOIN" },

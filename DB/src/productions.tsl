@@ -10,10 +10,11 @@ alias
 #include <vector>
 #include <string>
 
-#include "ast.h"
+#include "query.h"
 
 using namespace std;
-using namespace DB::AST;
+using namespace DB;
+using namespace DB::Query;
 
 namespace sql
 {
@@ -35,7 +36,7 @@ namespace sql
 		INT,
 
 		CHAR, VARCHAR, "$",
-		NULL, DISTINCT, VALUES,
+		NOT_NULL, DISTINCT, VALUES,
 		CREATE, DROP, INSERT, DELETE, UPDATE, SELECT, 
 		TABLE, "FROM", WHERE, JOIN,
 		ORDERBY, ASC, DESC, SET,
@@ -50,7 +51,7 @@ namespace sql
 	token_type = lexer::Token;
 	get_type = lexer::getType;
 	pass_info_struct = {
-        
+        //table info buffer
     };
 
 	using sqlStatement = SQLValue;
@@ -63,18 +64,17 @@ namespace sql
 	using updateStatement = UpdateInfo;
 	using deleteStatement = DeleteInfo;
 	using tableName = std::string;
-	using createDefinitions = std::vector<ColumnInfo*>;
-	using createDefinition = ColumnInfo*;
-	using columnDefinition = unsigned int;
-	using dataType = col_t_t;
-	using columnConstraint = constraint_t_t;
+	using createDefinitions = std::vector<ColumnInfo>;
+	using createDefinition = ColumnInfo;
+	using dataType = std::pair<col_t_t, unsigned int>; //type, len
+	using columnConstraint = ColumnInfo;
 	using insertElement = Elements;
 	using updateElement = Elements;
 	using selectElement = Elements;
-	using fromClause = std::pair<Source, bool>;
+	using fromClause = std::pair<Source, bool>;	//tables, join
 	using orderByClause = std::vector<orderby_element>;
 	using orderByExpression = orderby_element;
-	using columnName = std::pair<std::string, std::string>; // table.column
+	using columnName = Column;
 	using expressionAtoms = std::vector<BaseExpr*>;
 	using expression = BaseExpr*;
 	using predicate = BaseExpr*;
@@ -93,49 +93,74 @@ namespace sql
         cout << endl << endl;
     };
 
-	sqlStatement := ddlStatement
-				  | dmlStatement
+	sqlStatement := ddlStatement, { $$ = $1; }
+				  | dmlStatement, { $$ = $1; }
 				  ;
 
 
-	ddlStatement := createTable
-				  | dropTable
+	ddlStatement := createTable, { $$ = $1; }
+				  | dropTable, { $$ = $1; }
 				  ;
 
 
-	dmlStatement := selectStatement
-				  | insertStatement
-				  | updateStatement
-				  | deleteStatement
+	dmlStatement := selectStatement, { $$ = $1; }
+				  | insertStatement, { $$ = $1; }
+				  | updateStatement, { $$ = $1; }
+				  | deleteStatement, { $$ = $1; }
 				  ;
 
 	// Data Definition Language
 
-	createTable := "CREATE" "TABLE" tableName createDefinitions
+	createTable := "CREATE" "TABLE" tableName createDefinitions,
+				 {
+					$$.tableName = $3;
+					$$.columnInfos = $4;
+					$$.reset();
+				 }
 				 ;
 
-	dropTable := "DROP" "TABLE" tableName
+	dropTable := "DROP" "TABLE" tableName, { $$ = $3; }
 			   ;
 
 	createDefinitions := "(" createDefinition [{"," createDefinition}*] ")"
 					   ;
 
 	// need tableConstraint
-	createDefinition := "ID" columnDefinition
+	createDefinition := "ID" dataType columnConstraint*, =
+					  {
+						  //not default
+						  $$.columnName = std::get<std::string>($1._token);
+						  $$.col_t_ = $2.first;
+						  $$.str_len_ = $2.second;
+						  constraint_t_ //ColumnInfos into one
+					  }
 					  ;
 
-	columnDefinition := dataType columnConstraint*
-					  ;
-
-	dataType := "INT"
-			  | "CHAR" "(" positiveNum ")"
-			  | "VARCHAR" "(" positiveNum ")"
+	dataType := "INT", { $$ = make_pair(col_t_t::INT, 0); }
+			  | "CHAR" "(" positiveNum ")", { $$ = make_pair(col_t_t::CHAR, $3); }
+			  | "VARCHAR" "(" positiveNum ")", { $$ = make_pair(col_t_t::VARCHAR, $3); }
 			  ;
 
-	columnConstraint := "NOT" "NULL"
-					  | "DEFAULT" expressionAtom
-					  | "PRIMARY_KEY"
-					  | "REFERENCES" tableName "(" "ID" ")"
+	columnConstraint := "NOT_NULL", { $$.setNOT_NULL(); }
+					  | "DEFAULT" expressionAtom,
+					  {
+						  $$.setDEFAULT();
+						  RetValue val = vmVisit($2);
+						  if(auto op = get_if<int>(&val))
+						  {
+							  $$.defaultInt = *op;
+						  }
+						  else if(auto op = get_if<string>(&val))
+						  {
+							  $$.defaultStr = *op;
+						  }
+					  }
+					  | "PRIMARY_KEY", { $$.setPK(); }
+					  | "REFERENCES" tableName,
+					  {
+						  $$.setFK();
+						  $$.fkTable = $2;
+					  }
 					  ;
 
 
@@ -159,7 +184,10 @@ namespace sql
 				   ;	  
 						  
 	// Select Statement"s Details
-	selectElement := "$"
+	selectElement := "$",
+				   {
+					   //empty elements means all, checked in statement
+				   }
 				   | expressionAtom [{"," expressionAtom}*]
 				   ;
 
@@ -170,15 +198,19 @@ namespace sql
 					   ;
 
 	fromClause := "FROM" tableName ["," tableName]
-				| "FROM" tableName "JOIN" tableName
+				| "FROM" tableName "JOIN" tableName,
+				{
+					vector<string> tables = {$2, $4};
+					$$ = make_pair(tables, true);
+				}
 				;
 
 
-	tableName := "ID"
+	tableName := "ID", { $$ = std::get<std::string>($1._token); }
 			   ;
 
-	columnName := "ID" "." "ID"
-				| "ID"
+	columnName := "ID" "." "ID", { $$ = make_pair($1, $2); }
+				| "ID", { $$ = make_pair("", $1); }
 				;
 
 	expressionAtoms := expressionAtom [{"," expressionAtom}*]
@@ -195,35 +227,48 @@ namespace sql
 			   | expressionAtom
 			   ;
 
-	expressionAtom  := constantNum
-					 | "STR_LITERAL"
-					 | columnName
-					 | expressionAtom mathOperator expressionAto, left
+	expressionAtom  := constantNum, 
+					 {
+						 $$ = new 
+
+					 }
+					 | "STR_LITERAL",
+					 {
+
+					 }
+					 | columnName,
+					 {
+
+					 }
+					 | expressionAtom mathOperator expressionAto, left,
+					 {
+
+					 }
 					 ;
 
 	constantNum := ["-"] positiveNum
 				 ;
 	
-	positiveNum := "NUMBER_CONSTANT"
+	positiveNum := "NUMBER_CONSTANT", { $$ = std::get<int>($1._token) }
 				 ;
 				 
-	comparisonOperator := "=="
-						| ">"
-						| "<"
-						| "<="
-						| ">="
-						| "!="
+	comparisonOperator := "==", { $$ = comparison_t_t::EQ; }
+						| ">", { $$ = comparison_t_t::GREATER; }
+						| "<", { $$ = comparison_t_t::LESS; }
+						| "<=", { $$ = comparison_t_t::LEQ; }
+						| ">=", { $$ = comparison_t_t::GEQ; }
+						| "!=", { $$ = comparison_t_t::NEQ; }
 						;
 
-	logicalOperator := "AND", logicOp
-					 | "OR", logicOp
+	logicalOperator := "AND", logicOp, { $$ = logical_t_t::AND; }
+					 | "OR", logicOp, { $$ = logical_t_t::OR; }
 					 ;
 	rank {
-		mathOperator := "*", 0
-					  | "/", 0
-					  | "%", 1
-					  | "+", 2
-					  | "-", 2
+		mathOperator := "*", 0, { $$ = math_t_t::MUL; }
+					  | "/", 0, { $$ = math_t_t::DIV; }
+					  | "%", 1, { $$ = math_t_t::MOD; }
+					  | "+", 2, { $$ = math_t_t::ADD; }
+					  | "-", 2, { $$ = math_t_t::SUB; }
 					  ;
     }
 	```
