@@ -2,8 +2,9 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
-namespace DB {
+namespace DB::table {
 	using int8_t = __int8;
 	using uint8_t = unsigned __int8;
 	using int16_t = __int16;
@@ -62,4 +63,21 @@ namespace DB {
 			}
 		}
 	};
+
+	struct Row
+	{
+
+	};
+
+	struct VirtualTable {
+		std::vector<Row*> rows;
+	};
+
+
+	//need locks for mutli-threading
+	static std::unordered_map<std::string, table::TableInfo> tableBuffer;
+
+	table::TableInfo getTableInfo(const std::string& tableName);
+
+	table::ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName);
 }

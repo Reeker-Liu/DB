@@ -4,8 +4,10 @@
 #include <optional>
 #include <variant>
 #include "table.h"
+#include "ast.h"
 
-namespace DB::VM {
+
+namespace DB::vm {
 
 	using RetValue = std::variant<bool, int, std::string>;
 
@@ -18,15 +20,25 @@ namespace DB::VM {
 	// onlt used when creating table
 	//void insert_column(const std::string&, ColumnInfo*);
 
-	struct Row
+	
+	static RetValue getValue(const table::Row* row, const std::string& tableName, const std::string& columnName) { return 0; }
+
+	static std::optional<table::TableInfo> getTableInfo(const std::string& tableName) { return table::TableInfo(); }
+
+	static std::optional<table::VirtualTable*> getVirtualTable(const std::string& tableName) { return new table::VirtualTable(); }
+
+	//even isJoin is true, need to check whether the two sources can join
+	static table::VirtualTable* joinTables(std::vector<table::VirtualTable*> sources, bool isJoin = false){ return new table::VirtualTable(); }
+
+	static table::VirtualTable* projectTable(table::VirtualTable* source, std::vector< ast::AtomExpr*> elements){ return source; }
+
+	//this is a simple init implementation 
+	static table::VirtualTable* filterTable(table::VirtualTable* source, ast::BaseExpr* whereExpr)
 	{
+		return source;
+	}
 
-	};
-	RetValue getValue(const Row* row, const std::string& tableName, const std::string& columnName) { return 0; }
-
-	std::optional<TableInfo> getTableInfo(const std::string& tableName) { return TableInfo(); }
-
-	//bool VM::check_str_len(str, str_t);
+	//bool vm::check_str_len(str, str_t);
 	//enum class str_t { ... };
 
-}	//end namespace DB::VM
+}	//end namespace DB::vm

@@ -268,7 +268,7 @@ namespace sql
 							 {
 								 l.whereExpr = *whereExpr;
 								 outputVisit(l.whereExpr);
-								 checkVisit(l.whereExpr);
+								 checkVisit(l.whereExpr, l.sourceTables[0]);
 							 }
 							 else if(auto orderbys = get_if<vector<orderby_element>>(right[i].object))
 							 {

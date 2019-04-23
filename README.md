@@ -22,10 +22,10 @@
 ### todo
 
 - //supplement development documentation
-- optimize visit
+- add exit production
 - check pk nums
 - tsl delay check till know tablename
-- op tree for select
+- need check can join
 - RetValue need bool?
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 - debug/log
@@ -71,5 +71,5 @@
 
 > requirements need supporting by other parts
 
-- needed interfaces and structs are in namespace VM in [query.h](https://github.com/Endless-Fighting/DB/blob/master/DB/src/query.h)
+- needed interfaces and structs are in namespace VM in [VM.h](https://github.com/Endless-Fighting/DB/blob/master/DB/src/VM.h)
 - the table structure of joined tables should keep the original info about columns, such that for TableA TableB with both PK id, the tmp joined table should support that using TableA.id and TableB.id can fetch the same return value
