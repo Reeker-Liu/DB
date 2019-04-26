@@ -6,7 +6,7 @@
 
 namespace DB {
 	namespace query {
-		
+		BaseOp::~BaseOp(){ }
 
 		//===========================================================
 		//DML

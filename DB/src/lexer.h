@@ -77,6 +77,8 @@ namespace DB::lexer
 		LEFT_SQUARE_BRACKETS, RIGHT_SQUARE_BRACKETS, // square brackets  : "[", "]"
 		LEFT_CURLY_BRACKETS, RIGHT_CURLY_BRACKETS,   // curly brackets   : "{", "}"
 
+		EXIT,
+
 		__EOF__,
 	};
 
@@ -115,7 +117,7 @@ namespace DB::lexer
 		{ "[", type::LEFT_SQUARE_BRACKETS },  { "]", type::RIGHT_SQUARE_BRACKETS },
 		{ "{", type::LEFT_CURLY_BRACKETS },   { "}", type::RIGHT_CURLY_BRACKETS },
 
-		// { "$eof$", type::__EOF__ }, // no use
+		{"EXIT", type::EXIT},
 	};
 
 	// for display
@@ -154,6 +156,8 @@ namespace DB::lexer
 		{ type::LEFT_SQUARE_BRACKETS, "[" },  { type::RIGHT_SQUARE_BRACKETS, "]" },
 		{ type::LEFT_CURLY_BRACKETS, "{" },   { type::RIGHT_CURLY_BRACKETS, "}" },
 
+		{type::EXIT, "EXIT"},
+
 		{ type::__EOF__, "$eof$" },
 	};
 
@@ -165,16 +169,14 @@ namespace DB::lexer
 
 
 	/*
-	 * Parameter:
-	 *     s         :  char array to be processed.
-	 *     size      :  actual amounts of char to be processed.
+	 * parameter:
+	 *		s:  char array to be processed.
+	 *		size:  actual amounts of char to be processed.
 	 *
-	 * Return value:
-	 *     return a vector with tokens, otherwise the error message.
+	 *return a vector with tokens, otherwise the error message.
 	 *
-	 * Exception:
-	 *     No exception thrown, all exception should be diagnoed innerly,
-	 *     and return error message if possible.
+	 *no exception thrown, all exception should be diagnoed innerly,
+	 *		and return error message if possible.
 	 *
 	 */
 	namespace analyzers
@@ -216,13 +218,13 @@ namespace DB::lexer
 	};
 
 
-	lexer::type getType(const Token& token);
+	size_t getType(const Token& token);
 
 
 	class Lexer
 	{
 	public:
-		void tokenize(const std::string filename);
+		void tokenize(const char *s, const size_t size);
 		std::size_t size() const;
 		const Token& operator[](std::size_t pos) const { return _token_stream[pos]; }
 		bool empty() const;
@@ -230,6 +232,7 @@ namespace DB::lexer
 		void popToken();        // pop front, if no token, `throw DB_Universal_Exception`
 		Token consumeToken();   // consume, if no token, `throw DB_Universal_Exception`
 		void print(std::ostream& out) const;     // for DEBUG
+		std::deque<Token> getTokens();
 		Lexer() = default;
 		Lexer(const Lexer&) = delete;
 		Lexer& operator=(const Lexer&) = delete;

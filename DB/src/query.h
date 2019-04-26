@@ -14,7 +14,10 @@ namespace DB::query {
 	//===========================================================
 	//DDL
 	using CreateTableInfo = table::TableInfo;
-	using DropTableInfo = std::string;
+	struct DropTableInfo
+	{
+		std::string tableName;
+	};
 
 
 	//===========================================================
@@ -55,16 +58,17 @@ namespace DB::query {
 
 	struct ProjectOp : public BaseOp {
 		ProjectOp() :BaseOp(op_t_t::PROJECT) {}
-		~ProjectOp() { delete _source; }
+		virtual ~ProjectOp() { delete _source; }
 		virtual table::VirtualTable* getOutput();
 
+		std::vector<std::string> _names;	//the name of the accordingly element, not sure if useful
 		std::vector< ast::AtomExpr*> _elements;	//if empty, $ are used, all columns are needed
 		BaseOp* _source;
 	};
 
 	struct FilterOp : public BaseOp {
 		FilterOp(ast::BaseExpr* whereExpr) :BaseOp(op_t_t::FILTER), _whereExpr(whereExpr) {}
-		~FilterOp() { delete _whereExpr; delete _source; }
+		virtual ~FilterOp() { delete _whereExpr; delete _source; }
 		virtual table::VirtualTable* getOutput();
 
 		ast::BaseExpr* _whereExpr;
@@ -73,16 +77,16 @@ namespace DB::query {
 
 	struct JoinOp : public BaseOp {
 		JoinOp() :BaseOp(op_t_t::JOIN) {}
-		~JoinOp() {}
+		virtual ~JoinOp() {}
 		virtual table::VirtualTable* getOutput();
 
 		std::vector<BaseOp*> _sources;	//currently suppose all sources are TableOp
-		bool isJoin;
+		bool isJoin;	//even it's true, not sure if the tables can be joined
 	};
 
 	struct TableOp : public BaseOp {
 		TableOp(const std::string tableName) : BaseOp(op_t_t::TABLE), _tableName(tableName) {}
-		~TableOp(){}
+		virtual ~TableOp(){}
 		virtual table::VirtualTable* getOutput();
 
 		std::string _tableName;
@@ -98,14 +102,20 @@ namespace DB::query {
 #pragma endregion
 
 	//===========================================================
-	//type for vm
+	//for vm
+
+	struct Exit
+	{
+
+	};
 
 	struct ErrorMsg {
 		std::string msg;
 	};
 
 	//return type to vm, any exception that occurs will be catched and converted into ErrorMsg
-	using SQLValue = std::variant < CreateTableInfo, DropTableInfo, SelectInfo, UpdateInfo, InsertInfo, DeleteInfo, ErrorMsg>;
+	using SQLValue = std::variant < CreateTableInfo, DropTableInfo, SelectInfo, UpdateInfo, InsertInfo, DeleteInfo, Exit, ErrorMsg>;
+
 
 
 }	//end namespace DB::query

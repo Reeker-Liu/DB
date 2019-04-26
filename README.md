@@ -22,10 +22,8 @@
 ### todo
 
 - //supplement development documentation
-- add exit production
 - check pk nums
 - tsl delay check till know tablename
-- need check can join
 - RetValue need bool?
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 - debug/log

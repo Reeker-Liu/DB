@@ -225,37 +225,21 @@ namespace DB::lexer
 	/*
 	 * class member function for Lexer.
 	 */
-	void Lexer::tokenize(const std::string filename)
+	void Lexer::tokenize(const char *s, const size_t size)
 	{
-		constexpr std::size_t MAXSIZE = 256;
-		char buffer[MAXSIZE];
-		std::ifstream inputFile{ filename, std::ios::in };
-		if (!inputFile.is_open())
-		{
-			std::cout << "failed to open: " << std::quoted(filename) << std::endl;
-			return;
-		}
-		//try {
-		std::size_t line_num = 0;
 		_token_stream.clear();
-		while (!inputFile.eof())
-		{
-			inputFile.getline(buffer, MAXSIZE - 1);
-			line_num++;
-			auto result = DB::lexer::tokenize(buffer, strlen(buffer));
-			std::visit(overloaded{
-				[line_num](const DB::lexer::analyzers::Token_Ex& e) {
-					throw DB::DB_Universal_Exception{
-							std::move(const_cast<DB::lexer::analyzers::Token_Ex&>(e)._msg),
-							e._position };
-				},
-				[line_num, this](const std::vector<DB::lexer::token_info>& tokens) {
-					for (token_info const& token : tokens) 
-						this->_token_stream.push_back(token); 
-				},
+		auto result = DB::lexer::tokenize(s, size);
+		std::visit(overloaded{
+			[](const DB::lexer::analyzers::Token_Ex& e) {
+				throw DB::DB_Universal_Exception{
+						std::move(const_cast<DB::lexer::analyzers::Token_Ex&>(e)._msg),
+						e._position };
+			},
+			[this](const std::vector<DB::lexer::token_info>& tokens) {
+				for (token_info const& token : tokens)
+					this->_token_stream.push_back(token);
+			},
 			}, result);
-		}
-		inputFile.close();
 	}
 
 	std::size_t Lexer::size() const { return _token_stream.size(); }
@@ -301,14 +285,20 @@ namespace DB::lexer
 		}
 	}
 
-	type getType(const Token& token)
+	std::deque<Token> Lexer::getTokens()
 	{
-		return std::visit(DB::util::overloaded{
+		return this->_token_stream;
+	}
+
+	size_t getType(const Token& token)
+	{
+		type t = std::visit(DB::util::overloaded{
 				[](const lexer::type& type) { return type; },
 				[](const lexer::identifier) { return lexer::type::IDENTIFIER; },
 				[](const lexer::numeric_t) { return lexer::type::NUMBER_CONSTANT; },
 				[](const lexer::string_literal_t) { return lexer::type::STR_LITERAL; },
 			}, token._token);
+		return size_t(t);
 	}
 
 } // end namespace DB::lexer

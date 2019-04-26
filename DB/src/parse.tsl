@@ -1,0 +1,609 @@
+/*
+to do:
+trigger
+procedure
+alias
+*/
+#include <iostream>
+#include <variant>
+#include <vector>
+#include <string>
+#include <iomanip>
+#include <deque>
+#include <stack>
+
+#include "query.h"
+#include "lexer.h"
+
+using namespace DB;
+using namespace DB::query;
+using namespace DB::table;
+using namespace DB::ast;
+using namespace DB::lexer;
+
+
+using std::stack;
+using std::deque;
+using std::vector;
+using std::ostream;
+using std::cout;
+using std::endl;
+using std::get;
+using std::get_if;
+using std::string;
+
+namespace DB
+{
+	ostream &print_symbol(const long long s);
+	```tsl
+	terminate = 
+	{
+		"+", "-", "*", "/", "%",
+
+		AND, OR, 
+
+		"==", "!=", 
+		"<", ">", "<=", ">=", 
+
+		"=",
+
+		NUMBER_CONSTANT, ID, STR_LITERAL,
+
+		INT,
+
+		CHAR, VARCHAR, "$",
+		NOT_NULL, DISTINCT, VALUES,
+		CREATE, DROP, INSERT, DELETE, UPDATE, SELECT, 
+		TABLE, "FROM", WHERE, JOIN,
+		ORDERBY, ASC, DESC, SET,
+		DEFAULT, PRIMARY_KEY, REFERENCES, 
+
+		",", ".", ";",
+		"?", ":",
+		"(", ")",
+		"[", "]",
+		"{", "}",
+
+		EXIT,
+	};
+	token_type = lexer::Token;
+	get_type = lexer::getType;
+	pass_info_struct = {
+        SQLValue sqlValue;
+		int len;	//for data type
+    };
+
+	using createTable = CreateTableInfo;
+	using dropTable = DropTableInfo;
+	using selectStatement = SelectInfo;
+	using insertStatement = InsertInfo;
+	using updateStatement = UpdateInfo;
+	using deleteStatement = DeleteInfo;
+	using tableName = string;
+	using createDefinitions = std::vector<ColumnInfo>;
+	using createDefinition = ColumnInfo;
+	using dataType = col_t_t; //type, len
+	using columnConstraint = ColumnInfo;
+	using insertElement = Elements;
+	using updateElements = Elements;
+	using updateElement = Element;
+	using selectElements = ProjectOp*;
+	using fromClause = JoinOp*;
+	using orderByClause = std::vector<OrderbyElement>;
+	using orderByExpression = OrderbyElement;
+	using columnName = Column;
+	using expression = BaseExpr*;
+	using predicate = BaseExpr*;
+	using expressionAtom = AtomExpr*;
+	using constantNum = int;
+	using positiveNum = int;
+	using comparisonOperator = comparison_t_t;
+	using logicalOperator = logical_t_t;
+	using mathOperator = math_t_t;
+
+	back = {
+        cout << "REDUCE: ";
+        print_symbol(left.type) << ":= ";
+        for (auto &s: right)
+            print_symbol(s.type);
+        cout << endl << endl;
+    };
+
+	sqlStatement := ddlStatement
+				  | dmlStatement
+				  | "EXIT", { info.sqlValue = Exit(); }
+				  ;
+
+
+	ddlStatement := createTable, =
+				{ 
+					info.sqlValue = get<CreateTableInfo>(right[0].object);
+				}
+				| dropTable, =
+				{
+					info.sqlValue = get<DropTableInfo>(right[0].object);
+				}
+				;
+
+
+	dmlStatement := selectStatement, =
+				{ 
+					info.sqlValue = get<SelectInfo>(right[0].object);
+				}
+				| insertStatement, =
+				{ 
+					info.sqlValue = get<InsertInfo>(right[0].object);
+				}
+				| updateStatement, =
+				{ 
+					info.sqlValue = get<UpdateInfo>(right[0].object);
+				}
+				| deleteStatement, =
+				{ 
+					info.sqlValue = get<DeleteInfo>(right[0].object);
+				}
+				;
+
+	// Data Definition Language
+	createTable := "CREATE" "TABLE" tableName createDefinitions, =
+				{
+					auto& l = std::get<CreateTableInfo>(left.object);
+					l.tableName = get<string>(right[2].object);
+					l.columnInfos = get<vector<ColumnInfo>>(right[3].object);
+					l.reset();
+				}
+				;
+
+	dropTable := "DROP" "TABLE" tableName, =
+				{
+					auto& l = std::get<DropTableInfo>(left.object);
+					l.tableName = get<string>(right[2].object);
+				}
+			   	;
+
+	createDefinitions := "(" createDefinition [{"," createDefinition}*] ")", =
+					{
+						auto& l = std::get<vector<ColumnInfo>>(left.object);
+						size_t size = right.size();
+						for(size_t i = 1; i < size - 1; i += 2)
+						{
+							l.push_back(get<ColumnInfo>(right[i].object));
+						}
+					}
+					;
+
+	// need tableConstraint
+	createDefinition := "ID" dataType columnConstraint*, =
+					{
+						auto& l = std::get<ColumnInfo>(left.object);
+						auto& token = get<Token>(right[0].object);
+						l.columnName = get<identifier>(token._token);
+						auto& dataType = get<col_t_t>(right[1].object);
+						l.col_t_ = dataType;
+						l.str_len_ = info.len;
+
+						//no duplicate checking on columnConstraint,
+						//the last one overwrite the original
+						size_t size = right.size();
+						for(size_t i = 2; i < size; ++i)
+						{
+							ColumnInfo& column = get<ColumnInfo>(right[i].object);
+							if(column.isPK())
+							{
+								l.setPK();
+							}
+							else if(column.isFK())
+							{
+								l.setFK();
+								l.fkTable = column.fkTable;
+							}
+							else if(column.isNOT_NULL())
+							{
+								l.setNOT_NULL();
+							}
+							else if(column.isDEFAULT())
+							{
+								l.setDEFAULT();
+								l.defaultStr = column.defaultStr;
+								l.defaultInt = column.defaultInt;
+							}
+						}
+					}
+					;
+
+	dataType := "INT", =
+			{ 
+				auto& l = get<col_t_t>(left.object);
+				l = col_t_t::INT;
+			}
+			| "CHAR" "(" positiveNum ")", =
+			{ 
+				auto& l = get<col_t_t>(left.object);
+				l = col_t_t::CHAR;
+				info.len = get<int>(right[2].object);
+			}
+			| "VARCHAR" "(" positiveNum ")", =
+			{ 
+				auto& l = get<col_t_t>(left.object);
+				l = col_t_t::VARCHAR;
+				info.len = get<int>(right[2].object);
+			}
+			;
+
+	columnConstraint := "NOT_NULL", = 
+					{ 
+						auto& l = get<ColumnInfo>(left.object);
+						l.setNOT_NULL();
+					}
+					| "DEFAULT" expressionAtom, =
+					{
+						auto& l = get<ColumnInfo>(left.object);
+						l.setDEFAULT();
+						auto& expr = get<AtomExpr*>(right[1].object);
+						RetValue val = vmVisit(expr);
+						if(auto op = get_if<int>(&val))
+						{
+							l.defaultInt = *op;
+						}
+						else if(auto op = get_if<string>(&val))
+						{
+							l.defaultStr = *op;
+						}
+					}
+					| "PRIMARY_KEY", =
+					{ 
+						auto& l = get<ColumnInfo>(left.object);
+						l.setPK();
+					}
+					| "REFERENCES" tableName, =
+					{
+						auto& l = get<ColumnInfo>(left.object);
+						l.setFK();
+						l.fkTable = get<string>(right[1].object);
+					}
+					;
+
+
+	// Data Manipulation Language
+	insertStatement := "INSERT" tableName ["(" "ID" [{"," "ID"}*] ")"] insertElements, =
+					{
+						//match ID and value in insertElement
+						auto& l = get<InsertInfo>(left.object);
+						vector<string> columnNames;
+						size_t size = right.size();
+						for(size_t i = 3; i < size - 2; i += 2)
+						{
+							auto& token = get<Token>(right[i].object);
+							columnNames.push_back(get<identifier>(token._token));
+						}
+						auto& elements = get<Elements>(right[size-1].object);
+						if(columnNames.size() != elements.size())
+							throw DB_Exception("the number of columns and elements don't match");
+						
+						for(size_t i = 0; i < elements.size(); ++i)
+						{
+							elements[i].name = columnNames[i];
+						}
+						l.sourceTable = get<string>(right[1].object);
+						l.elements = elements;
+					}
+					;
+
+	deleteStatement := "DELETE" "FROM" tableName ["WHERE" expression], =
+					{
+						auto& l = get<DeleteInfo>(left.object);
+						l.sourceTable = get<string>(right[2].object);
+						if(right.size() == 5)
+						{
+							l.whereExpr = get<BaseExpr*>(right[4].object);
+							std::cout << "\n--output where expression in delete statment---------------------------------------\n" << std::endl;
+							outputVisit(l.whereExpr, std::cout);
+							std::cout << "\n--end -output in delete statment---------------------------------------\n" << std::endl;
+						}
+					}
+					;
+
+	updateStatement := "UPDATE" tableName "SET" updateElements ["WHERE" expression], =
+					{
+						auto& l = get<UpdateInfo>(left.object);
+						l.sourceTable = get<string>(right[1].object);
+						l.elements = get<Elements>(right[3].object);
+						if(right.size() == 6)
+						{
+							l.whereExpr = get<BaseExpr*>(right[5].object);
+							std::cout << "\n--output where expression in update statment---------------------------------------\n" << std::endl;
+							outputVisit(l.whereExpr, std::cout);
+							std::cout << "\n--end output in update statment---------------------------------------\n" << std::endl;
+						}
+					}
+					;
+
+	// need  ["DISTINCT"]
+	selectStatement := "SELECT" selectElements fromClause ["WHERE" expression] [orderByClause], =
+					{
+						auto& l = std::get<SelectInfo>(left.object);
+						JoinOp* joinOp = get<JoinOp*>(right[2].object);
+						BaseOp* baseOp = joinOp;
+						if(right.size() > 3)
+						{
+							auto whereExpr = get_if<BaseExpr*>(&right[4].object);
+							if(!whereExpr) goto brk;
+							FilterOp* filterOp = new FilterOp(*whereExpr);
+							filterOp->_source = joinOp;
+							baseOp = filterOp;
+							std::cout << "\n--output where expression in select statment---------------------------------------\n" << std::endl;
+							outputVisit(*whereExpr, std::cout);
+							std::cout << "\n--end output in select statment---------------------------------------\n" << std::endl;
+						}
+					brk:
+						ProjectOp* projectOp = get<ProjectOp*>(right[2].object);
+						projectOp->_source = baseOp;
+						l.opRoot = projectOp;
+
+						//currently not handle orderby
+					}
+					;
+
+	// need selectStatement
+	insertElements := "VALUES" "(" expressionAtom [{"," expressionAtom}*] ")", =
+					{
+						auto& l = get<Elements>(left.object);
+						size_t size = right.size();
+						for(size_t i = 2; i < size; i += 2)
+						{
+							Element ele;
+							ele.valueExpr = get<AtomExpr*>(right[i].object);
+							std::cout << "\n--output expression in insert element---------------------------------------\n" << std::endl;
+							outputVisit(ele.valueExpr, std::cout);
+							std::cout << "\n--end output in insert element---------------------------------------\n" << std::endl;
+							l.push_back(ele);
+						}
+					}
+					;
+	
+	updateElements := updateElement [{"," updateElement}*], =
+					{
+						auto& l = get<Elements>(left.object);
+						size_t size = right.size();
+						for(size_t i = 0; i < size; i += 2)
+						{
+							l.push_back(get<Element>(right[i].object));
+						}
+					}
+					;
+
+	updateElement := columnName "=" {expressionAtom | "DEFAULT"}, =
+					{
+						auto& l = get<Element>(left.object);
+						l.name = get<string>(right[0].object);
+						if(auto expr = get_if<AtomExpr*>(&right[2].object))
+						{
+							l.isDefault = false;
+							l.valueExpr = *expr;
+							std::cout << "\n--output expression in update element---------------------------------------\n" << std::endl;
+							outputVisit(l.valueExpr, std::cout);
+							std::cout << "\n--end output in update element---------------------------------------\n" << std::endl;
+						}
+						else
+						{
+							l.isDefault = true;
+						}
+					}
+					;	  
+						  
+	// Select Statement"s Details
+	selectElements := "$", = 
+					{
+						auto& l = get<ProjectOp*>(left.object);
+						l = new ProjectOp();
+					}
+					| expressionAtom [{"," expressionAtom}*], =
+					{
+						auto& l = get<ProjectOp*>(left.object);
+						l = new ProjectOp();
+						size_t size = right.size();
+						for(size_t i = 0; i < size; i += 2)
+						{
+							AtomExpr* expr = get<AtomExpr*>(right[i].object);
+							l->_elements.push_back(expr);
+							std::cout << "\n--output express in select element---------------------------------------\n" << std::endl;
+							outputVisit(expr, std::cout);
+							std::cout << "\n--end output in select element---------------------------------------\n" << std::endl;
+							if(expr->base_t_ == base_t_t::ID)
+							{
+								IdExpr* idPtr = static_cast<IdExpr*>(expr);
+								if(idPtr->_tableName.empty())
+								{
+									l->_names.push_back(idPtr->_columnName);
+								}
+								else
+								{
+									l->_names.push_back(idPtr->_tableName + "." + idPtr->_columnName);
+								}
+							}
+							else
+							{
+								l->_names.push_back("Column" + std::to_string(i));
+							}
+						}
+					}
+					;
+
+	orderByClause := "ORDERBY" orderByExpression [{"," orderByExpression}*], =
+				   {
+					   bool useless;
+				   }
+				   ;
+
+	orderByExpression := expressionAtom ["ASC"|"DESC"], =
+					   {
+						  bool useless;
+					   }
+					   ;
+
+	fromClause := "FROM" tableName [{"," tableName}*], =
+				{
+					auto& l = get<JoinOp*>(left.object);
+					l = new JoinOp();
+					l->isJoin = false;
+					size_t size = right.size();
+					for(size_t i = 1; i < size; i += 2)
+					{
+						l->_sources.push_back(new TableOp(get<string>(right[i].object)));
+					}
+				}
+				| "FROM" tableName "JOIN" tableName, =
+				{
+					auto& l = get<JoinOp*>(left.object);
+					TableOp* table1 = new TableOp(get<string>(right[1].object));
+					TableOp* table2 = new TableOp(get<string>(right[3].object));
+					l = new JoinOp();
+					l->isJoin = true;
+					l->_sources.push_back(table1);
+					l->_sources.push_back(table2);
+				}
+				;
+
+
+	tableName := "ID", =
+				{
+					auto& l = get<string>(left.object);
+					auto& token = get<Token>(right[0].object);
+					l = get<identifier>(token._token);
+				}
+				;
+
+	columnName := "ID" "." "ID", =
+				{ 
+					auto& l = get<Column>(left.object);
+					auto& token1 = get<Token>(right[0].object);
+					auto& token2 = get<Token>(right[2].object);
+					string _tableName = get<identifier>(token1._token);
+					string _columnName = get<identifier>(token2._token);
+					l = make_pair(_tableName, _columnName); 
+				}
+				| "ID", =
+				{ 
+					auto& l = get<Column>(left.object);
+					auto& token = get<Token>(right[0].object);
+					l = make_pair("", get<identifier>(token._token));
+				}
+				;
+
+
+	left logicOp;
+
+	expression := expression logicalOperator expression, logicOp, =
+				{
+					auto& l = get<BaseExpr*>(left.object);
+					logical_t_t logical_t = get<logical_t_t>(right[1].object);
+					BaseExpr* expr1 = get<BaseExpr*>(right[0].object);
+					BaseExpr* expr2 = get<BaseExpr*>(right[2].object);
+
+					//need check if exprs can be supported by logical op
+
+					l = new LogicalOpExpr(logical_t, expr1, expr2);
+				}
+				| predicate, =
+				{ 
+					auto& l = get<BaseExpr*>(left.object);
+					l = get<BaseExpr*>(right[0].object);
+				}
+				;
+
+	// predicate need (in select) and (like) form and (exists)
+	predicate := expressionAtom comparisonOperator expressionAtom, =
+			   {
+					auto& l = get<BaseExpr*>(left.object);
+					comparison_t_t comparison_t = get<comparison_t_t>(right[1].object);
+					AtomExpr* expr1 = get<AtomExpr*>(right[0].object);
+					AtomExpr* expr2 = get<AtomExpr*>(right[2].object);
+					l = new ComparisonOpExpr(comparison_t, expr1, expr2);
+			   }
+			   | expressionAtom, =
+			   { 
+				   auto& l = get<BaseExpr*>(left.object);
+				   l = get<AtomExpr*>(right[0].object);
+				}
+			   ;
+
+	left mathOp;
+
+	expressionAtom  := constantNum, =
+					{
+						auto& l = get<AtomExpr*>(left.object);
+						l = new NumericExpr(get<int>(right[0].object));
+					}
+					| "STR_LITERAL", =
+					{
+						auto& l = get<AtomExpr*>(left.object);
+						auto& token = get<Token>(right[0].object);
+						l = new StrExpr(get<0>(get<string_literal_t>(token._token)));
+					}
+					| columnName, =
+					{
+						auto& l = get<AtomExpr*>(left.object);
+						auto& column = get<Column>(right[0].object);
+						l = new IdExpr(column.second, column.first);
+					}
+					| expressionAtom mathOperator expressionAtom, mathOp, =
+					{
+						auto& l = get<AtomExpr*>(left.object);
+						math_t_t math_t = get<math_t_t>(right[1].object);
+						AtomExpr* expr1 = get<AtomExpr*>(right[0].object);
+						AtomExpr* expr2 = get<AtomExpr*>(right[2].object);
+						l = new MathOpExpr(math_t, expr1, expr2);
+					}
+					;
+
+	constantNum := ["-"] positiveNum, =
+				{
+					auto& l = get<int>(left.object);
+					if(right.size() > 1)
+					{
+						int val = get<int>(right[1].object);
+						l = -val;
+					}
+					else
+					{
+						l = get<int>(right[0].object);
+					}
+				}
+				;
+	
+	positiveNum := "NUMBER_CONSTANT", =
+				{ 
+					auto& l = get<int>(left.object);
+					auto& token = get<Token>(right[0].object);
+					l = get<0>(get<numeric_t>(token._token));
+				}
+				;
+				 
+	comparisonOperator := "==", ={ auto& l = get<comparison_t_t>(left.object); l = comparison_t_t::EQ; }
+						| ">", ={ auto& l = get<comparison_t_t>(left.object); l = comparison_t_t::GREATER; }
+						| "<", ={ auto& l = get<comparison_t_t>(left.object); l = comparison_t_t::LESS; }
+						| "<=", ={ auto& l = get<comparison_t_t>(left.object); l = comparison_t_t::LEQ; }
+						| ">=", ={ auto& l = get<comparison_t_t>(left.object); l = comparison_t_t::GEQ; }
+						| "!=", ={ auto& l = get<comparison_t_t>(left.object); l = comparison_t_t::NEQ; }
+						;
+
+	logicalOperator := "AND", logicOp, ={ auto& l = get<logical_t_t>(left.object); l = logical_t_t::AND; }
+					 | "OR", logicOp, ={ auto& l = get<logical_t_t>(left.object); l = logical_t_t::OR; }
+					 ;
+	rank {
+		properties = mathOp;
+		mathOperator := "*", 0, ={ auto& l = get<math_t_t>(left.object); l = math_t_t::MUL; }
+					  | "/", 0, ={ auto& l = get<math_t_t>(left.object); l = math_t_t::DIV; }
+					  | "%", 1, ={ auto& l = get<math_t_t>(left.object); l = math_t_t::MOD; }
+					  | "+", 2, ={ auto& l = get<math_t_t>(left.object); l = math_t_t::ADD; }
+					  | "-", 2, ={ auto& l = get<math_t_t>(left.object); l = math_t_t::SUB; }
+					  ;
+    }
+	```
+	ostream &print_symbol(const long long s) {
+        if (s < 0)
+            return std::cout << utils::type_name_map[s] << " ";
+        else
+            return std::cout << std::quoted(utils::type_name_map[s]) << " ";
+    }
+}

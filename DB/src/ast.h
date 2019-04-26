@@ -34,13 +34,13 @@ namespace DB::ast {
 	};
 
 	struct LogicalOpExpr : public NonAtomExpr {
-		LogicalOpExpr(logical_t_t logical_t, LogicalOpExpr* left, LogicalOpExpr* right) :
+		LogicalOpExpr(logical_t_t logical_t, BaseExpr* left, BaseExpr* right) :
 			NonAtomExpr(base_t_t::LOGICAL_OP), logical_t_(logical_t), _left(left), _right(right) {}
 		virtual ~LogicalOpExpr();
 
 		const logical_t_t logical_t_;
-		NonAtomExpr* _left;
-		NonAtomExpr* _right;
+		BaseExpr* _left;
+		BaseExpr* _right;
 	};
 
 	struct ComparisonOpExpr : public NonAtomExpr {
@@ -82,7 +82,7 @@ namespace DB::ast {
 	};
 
 	struct StrExpr : public AtomExpr {
-		StrExpr(std::string& value) :
+		StrExpr(const std::string& value) :
 			AtomExpr(base_t_t::STR), _value(value) {}
 		virtual ~StrExpr();
 
