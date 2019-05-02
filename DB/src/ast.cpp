@@ -36,6 +36,44 @@ namespace DB::ast {
 
 	StrExpr::~StrExpr() { }
 
+	BaseOp::~BaseOp() { }
+
+	//===========================================================
+	//DML
+	table::VirtualTable ProjectOp::getOutput()
+	{
+		table::VirtualTable table = _source->getOutput();
+		return vm::projectTable(table, _elements);
+	}
+
+	table::VirtualTable FilterOp::getOutput()
+	{
+		table::VirtualTable table = _source->getOutput();
+		return vm::filterTable(table, _whereExpr);
+	}
+
+	table::VirtualTable JoinOp::getOutput()
+	{
+		std::vector<table::VirtualTable> tables;
+		for (auto& source : _sources)
+		{
+			tables.push_back(source->getOutput());
+		}
+		return vm::joinTables(tables, this->isJoin);
+	}
+
+	table::VirtualTable TableOp::getOutput()
+	{
+		if (auto table = vm::getVirtualTable(this->_tableName))
+		{
+			return table.value();
+		}
+		else
+		{
+			throw DB_Exception("no such table \"" + this->_tableName + "\"");
+		}
+	}
+
 
 	//===========================================================
 	//visit functions
@@ -98,9 +136,70 @@ namespace DB::ast {
 
 	void outputVisit(const BaseExpr* root, std::ostream& os)
 	{
-		_outputVisit(root, os, 0);
+		_outputVisit(root, os, 2);
 	}
 
+	void _outputVisit(const BaseOp* root, std::ostream &os, size_t indent)
+	{
+		op_t_t op_t = root->op_t_;
+		std::string prefix = std::string(indent * 2, '-');
+		++indent;
+		os << prefix;
+		switch (op_t)
+		{
+		case DB::ast::op_t_t::PROJECT:
+		{
+			const ProjectOp* projectOp = static_cast<const ProjectOp*>(root);
+			os << "Project on ";
+			if (projectOp->_elements.empty())
+				os << "ALL" << std::endl;
+			else
+			{
+				os << std::endl;
+				for (auto expr : projectOp->_elements)
+				{
+					_outputVisit(expr, std::cout, indent);
+				}
+			}
+			os << prefix << "From" << std::endl;
+			_outputVisit(projectOp->_source, os, indent);
+		}
+			break;
+		case DB::ast::op_t_t::FILTER:
+		{
+			const FilterOp* filterOp = static_cast<const FilterOp*>(root);
+			os << "Filter with " << std::endl;
+			_outputVisit(filterOp->_whereExpr, std::cout, indent);
+			os << prefix << "From" << std::endl;
+			_outputVisit(filterOp->_source, os, indent);
+		}
+			break;
+		case DB::ast::op_t_t::JOIN:
+		{
+			const JoinOp* joinOp = static_cast<const JoinOp*>(root);
+			if (joinOp->isJoin)
+				os << "Join on " << std::endl;
+			else
+				os << "Cartesian product on" << std::endl;
+			for (auto source : joinOp->_sources)
+				_outputVisit(source, os, indent);
+		}
+			break;
+		case DB::ast::op_t_t::TABLE:
+		{
+			const TableOp* tableOp = static_cast<const TableOp*>(root);
+			os << "Table " << tableOp->_tableName << std::endl;
+		}
+			break;
+		default:
+			break;
+		}
+	}
+
+	void outputVisit(const BaseOp* root, std::ostream &os)
+	{
+		_outputVisit(root, os, 0);
+	}
 
 	//check visit
 	//using CheckValue = std::tuple< bool, base_t_t, RetValue>;	//<hasIdExpr, type, value>

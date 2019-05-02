@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include <functional>
 #include <unordered_set>
+#include "dbexception.h"
 
 using namespace DB::lexer;
 using std::unordered_set;

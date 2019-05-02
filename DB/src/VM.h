@@ -25,15 +25,15 @@ namespace DB::vm {
 
 	static std::optional<table::TableInfo> getTableInfo(const std::string& tableName) { return table::TableInfo(); }
 
-	static std::optional<table::VirtualTable*> getVirtualTable(const std::string& tableName) { return new table::VirtualTable(); }
+	static std::optional<table::VirtualTable> getVirtualTable(const std::string& tableName) { return table::VirtualTable(); }
 
 	//even isJoin is true, need to check whether the two sources can join
-	static table::VirtualTable* joinTables(std::vector<table::VirtualTable*> sources, bool isJoin = false){ return new table::VirtualTable(); }
+	static table::VirtualTable joinTables(std::vector<table::VirtualTable> sources, bool isJoin = false){ return table::VirtualTable(); }
 
-	static table::VirtualTable* projectTable(table::VirtualTable* source, std::vector< ast::AtomExpr*> elements){ return source; }
+	static table::VirtualTable projectTable(table::VirtualTable source, std::vector< ast::AtomExpr*> elements){ return source; }
 
 	//this is a simple init implementation 
-	static table::VirtualTable* filterTable(table::VirtualTable* source, ast::BaseExpr* whereExpr)
+	static table::VirtualTable filterTable(table::VirtualTable source, ast::BaseExpr* whereExpr)
 	{
 		return source;
 	}

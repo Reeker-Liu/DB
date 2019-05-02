@@ -90,6 +90,51 @@ namespace DB::ast {
 	};
 
 
+	enum class op_t_t { PROJECT, FILTER, JOIN, TABLE };
+	struct BaseOp {
+		BaseOp(op_t_t op_t) :op_t_(op_t) {}
+		virtual ~BaseOp() = 0;
+		virtual table::VirtualTable getOutput() = 0;
+
+		op_t_t op_t_;
+	};
+
+	struct ProjectOp : public BaseOp {
+		ProjectOp() :BaseOp(op_t_t::PROJECT) {}
+		virtual ~ProjectOp() { delete _source; }
+		virtual table::VirtualTable getOutput();
+
+		std::vector<std::string> _names;	//the name of the accordingly element, not sure if useful
+		std::vector< ast::AtomExpr*> _elements;	//if empty, $ are used, all columns are needed
+		BaseOp* _source;
+	};
+
+	struct FilterOp : public BaseOp {
+		FilterOp(ast::BaseExpr* whereExpr) :BaseOp(op_t_t::FILTER), _whereExpr(whereExpr) {}
+		virtual ~FilterOp() { delete _whereExpr; delete _source; }
+		virtual table::VirtualTable getOutput();
+
+		ast::BaseExpr* _whereExpr;
+		BaseOp* _source;
+	};
+
+	struct JoinOp : public BaseOp {
+		JoinOp() :BaseOp(op_t_t::JOIN) {}
+		virtual ~JoinOp() {}
+		virtual table::VirtualTable getOutput();
+
+		std::vector<BaseOp*> _sources;	//currently suppose all sources are TableOp
+		bool isJoin;	//even it's true, not sure if the tables can be joined
+	};
+
+	struct TableOp : public BaseOp {
+		TableOp(const std::string tableName) : BaseOp(op_t_t::TABLE), _tableName(tableName) {}
+		virtual ~TableOp() {}
+		virtual table::VirtualTable getOutput();
+
+		std::string _tableName;
+	};
+
 	//===========================================================
 	//visit functions
 
@@ -97,8 +142,9 @@ namespace DB::ast {
 	*output visit, output the ast to the given ostream
 	*regardless of validity
 	*/
-	void outputVisit(const BaseExpr* root, std::ostream& os);
+	void outputVisit(const BaseExpr* root, std::ostream &os);
 
+	void outputVisit(const BaseOp* root, std::ostream &os);
 
 	/*
 	*check visit, used in parsing phase

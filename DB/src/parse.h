@@ -12,8 +12,10 @@ alias
 #include <deque>
 #include <stack>
 
-#include "query.h"
+#include "table.h"
+#include "ast.h"
 #include "lexer.h"
+#include "query.h"
 
 using namespace DB;
 using namespace DB::query;

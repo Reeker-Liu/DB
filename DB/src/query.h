@@ -5,11 +5,9 @@
 #include <optional>
 #include <unordered_map>
 #include "table.h"
-#include "dbexception.h"
 #include "ast.h"
 
 namespace DB::query {
-	
 	
 	//===========================================================
 	//DDL
@@ -19,13 +17,13 @@ namespace DB::query {
 		std::string tableName;
 		void print() const
 		{
-			std::cout << "drop table : " << tableName << std::endl;
+			std::cout << "Drop table : " << tableName << std::endl;
 		}
 	};
 
 
 	//===========================================================
-#pragma region DML
+	//DML
 
 	struct Element {
 		std::string name;
@@ -38,8 +36,18 @@ namespace DB::query {
 		Elements elements;
 		void print() const
 		{
-			std::cout << "insert into table : " << sourceTable << std::endl;
-
+			std::cout << "Insert into table : " << sourceTable << std::endl;
+			for (const Element &ele : elements)
+			{
+				std::cout << "Column : " << ele.name;
+				if (ele.isDefault)
+					std::cout << "\t Default value" << std::endl;
+				else
+				{
+					std::cout << std::endl;
+					ast::outputVisit(ele.valueExpr, std::cout);
+				}
+			}
 		}
 	};
 
@@ -49,8 +57,20 @@ namespace DB::query {
 		ast::BaseExpr* whereExpr;
 		void print() const
 		{
-			std::cout << "update table : " << sourceTable << std::endl;
-
+			std::cout << "Update table : " << sourceTable << std::endl;
+			for (const Element &ele : elements)
+			{
+				std::cout << "Column : " << ele.name;
+				if (ele.isDefault)
+					std::cout << "\t Default value" << std::endl;
+				else
+				{
+					std::cout << std::endl;
+					ast::outputVisit(ele.valueExpr, std::cout);
+				}
+			}
+			std::cout << "Where Expression:" << std::endl;
+			ast::outputVisit(whereExpr, std::cout);
 		}
 	};
 
@@ -59,75 +79,32 @@ namespace DB::query {
 		ast::BaseExpr* whereExpr;
 		void print() const
 		{
-			std::cout << "delete from table : " << sourceTable << std::endl;
-
+			std::cout << "Delete from table : " << sourceTable << std::endl;
+			std::cout << "Where Expression:" << std::endl;
+			ast::outputVisit(whereExpr, std::cout);
+		}
+	};
+	
+	using OrderbyElement = std::pair<ast::BaseExpr*, bool>;	//	orderExpr, isASC
+	struct SelectInfo {
+		ast::BaseOp* opRoot;
+		std::vector<OrderbyElement> orderbys;
+		void print() const
+		{
+			std::cout << "Select : " << std::endl;
+			ast::outputVisit(opRoot, std::cout);
 		}
 	};
 
 
-
-	enum class op_t_t { PROJECT, FILTER, JOIN, TABLE };
-	struct BaseOp {
-		BaseOp(op_t_t op_t) :op_t_(op_t) {}
-		virtual ~BaseOp() = 0;
-		virtual table::VirtualTable* getOutput() = 0;
-
-		op_t_t op_t_;
-	};
-
-	struct ProjectOp : public BaseOp {
-		ProjectOp() :BaseOp(op_t_t::PROJECT) {}
-		virtual ~ProjectOp() { delete _source; }
-		virtual table::VirtualTable* getOutput();
-
-		std::vector<std::string> _names;	//the name of the accordingly element, not sure if useful
-		std::vector< ast::AtomExpr*> _elements;	//if empty, $ are used, all columns are needed
-		BaseOp* _source;
-	};
-
-	struct FilterOp : public BaseOp {
-		FilterOp(ast::BaseExpr* whereExpr) :BaseOp(op_t_t::FILTER), _whereExpr(whereExpr) {}
-		virtual ~FilterOp() { delete _whereExpr; delete _source; }
-		virtual table::VirtualTable* getOutput();
-
-		ast::BaseExpr* _whereExpr;
-		BaseOp* _source;
-	};
-
-	struct JoinOp : public BaseOp {
-		JoinOp() :BaseOp(op_t_t::JOIN) {}
-		virtual ~JoinOp() {}
-		virtual table::VirtualTable* getOutput();
-
-		std::vector<BaseOp*> _sources;	//currently suppose all sources are TableOp
-		bool isJoin;	//even it's true, not sure if the tables can be joined
-	};
-
-	struct TableOp : public BaseOp {
-		TableOp(const std::string tableName) : BaseOp(op_t_t::TABLE), _tableName(tableName) {}
-		virtual ~TableOp(){}
-		virtual table::VirtualTable* getOutput();
-
-		std::string _tableName;
-	};
-	
-	
-	using OrderbyElement = std::pair<ast::BaseExpr*, bool>;	//	orderExpr, isASC
-	struct SelectInfo {
-		BaseOp* opRoot;
-		std::vector<OrderbyElement> orderbys;
-	};
-
-#pragma endregion
-
 	//===========================================================
-	//for vm
+	//specified for vm
 
 	struct Exit
 	{
 		void print() const
 		{
-			std::cout << "exit" << std::endl;
+			std::cout << "Exit" << std::endl;
 
 		}
 	};
@@ -149,11 +126,8 @@ namespace DB::query {
 	//return type to vm, any exception that occurs will be catched and converted into ErrorMsg
 	using SQLValue = std::variant < CreateTableInfo, DropTableInfo, SelectInfo, UpdateInfo, InsertInfo, DeleteInfo, Exit, ErrorMsg>;
 
-	template <typename PrintTp>
-	void print(const PrintTp &p) 
-	{
-		p.print();
-	}
+	void print(const SQLValue &value);
 	
+	SQLValue sql_parse(const std::string &sql);
 
 }	//end namespace DB::query

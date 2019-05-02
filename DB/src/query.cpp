@@ -2,48 +2,52 @@
 #include <iostream>
 #include "query.h"
 #include "dbexception.h"
+#include "util.h"
 #include "VM.h"
+#include "lexer.h"
+#include "ast.h"
+#include "parse.h"
 
-namespace DB {
-	namespace query {
-		BaseOp::~BaseOp(){ }
+namespace DB::query {
 
-		//===========================================================
-		//DML
-		table::VirtualTable* ProjectOp::getOutput()
+	void print(const SQLValue &value)
+	{
+		std::cout << "=========Print SQLValue============================" << std::endl;
+		std::visit(DB::util::overloaded{
+			[](const CreateTableInfo& t) {},
+			[](const DropTableInfo& t) { t.print(); },
+			[](const SelectInfo& t) { t.print(); },
+			[](const UpdateInfo& t) { t.print(); },
+			[](const InsertInfo& t) { t.print(); },
+			[](const DeleteInfo& t) { t.print(); },
+			[](const Exit& t) { t.print(); },
+			[](const ErrorMsg& t) { t.print(); }
+			}, value);
+		std::cout << "=========End SQLValue============================" << std::endl;
+	}
+
+	SQLValue sql_parse(const std::string &sql)
+	{
+		try
 		{
-			table::VirtualTable* table = _source->getOutput();
-			return vm::projectTable(table, _elements);
+			DB::lexer::Lexer lexer;
+			std::cout << "\n--Start Tokenize---------------------------------------\n" << std::endl;
+			lexer.tokenize(sql.c_str(), sql.size());
+			lexer.print(std::cout);
+			std::cout << "\n--End Tokenize---------------------------------------\n" << std::endl;
+			std::cout << "\n--Start Parse---------------------------------------\n" << std::endl;
+			DB::query::SQLValue value = analyze(lexer.getTokens()).sqlValue;
+			std::cout << "\n--End Parse---------------------------------------\n" << std::endl;
+			return value;
 		}
-
-		table::VirtualTable* FilterOp::getOutput()
+		catch (const DB::DB_Base_Exception& e)
 		{
-			table::VirtualTable* table = _source->getOutput();
-			return vm::filterTable(table, _whereExpr);
+			e.printException(); std::cout << std::endl;
+			return ErrorMsg(e.str());	//change to details
 		}
-
-		table::VirtualTable* JoinOp::getOutput()
-		{
-			std::vector<table::VirtualTable*> tables;
-			for (auto& source : _sources)
-			{
-				tables.push_back(source->getOutput());
-			}
-			return vm::joinTables(tables, this->isJoin);
-		}
-
-		table::VirtualTable* TableOp::getOutput()
-		{
-			if (auto table = vm::getVirtualTable(this->_tableName))
-			{
-				return table.value();
-			}
-			else
-			{
-				throw DB_Exception("no such table \"" + this->_tableName + "\"");
-			}
-		}
-
-	} //end namespace query
+		catch (const std::exception& e) { std::cout << e.what() << std::endl << std::endl; }
+		catch (...) { std::cout << "Unexpected Exception" << std::endl << std::endl; }
+		return ErrorMsg("unexpected exception");
+	}
 
 } //end namespace DB

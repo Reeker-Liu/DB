@@ -10,7 +10,6 @@
 #include <unordered_map>
 #include <vector>
 #include <deque>
-#include "dbexception.h"
 #include "util.h"
 
 #undef NULL
