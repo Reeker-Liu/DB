@@ -22,8 +22,11 @@
 ### todo
 
 - //supplement development documentation
+- print SQLValue result
+- change CreateTableInfo
 - check pk nums
 - tsl delay check till know tablename
+- BaseOp need op_t_t?
 - RetValue need bool?
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 - debug/log

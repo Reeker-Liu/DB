@@ -17,6 +17,10 @@ namespace DB::query {
 	struct DropTableInfo
 	{
 		std::string tableName;
+		void print() const
+		{
+			std::cout << "drop table : " << tableName << std::endl;
+		}
 	};
 
 
@@ -32,17 +36,32 @@ namespace DB::query {
 	struct InsertInfo {
 		std::string sourceTable;
 		Elements elements;
+		void print() const
+		{
+			std::cout << "insert into table : " << sourceTable << std::endl;
+
+		}
 	};
 
 	struct UpdateInfo {
 		std::string sourceTable;
 		Elements elements;
 		ast::BaseExpr* whereExpr;
+		void print() const
+		{
+			std::cout << "update table : " << sourceTable << std::endl;
+
+		}
 	};
 
 	struct DeleteInfo {
 		std::string sourceTable;
 		ast::BaseExpr* whereExpr;
+		void print() const
+		{
+			std::cout << "delete from table : " << sourceTable << std::endl;
+
+		}
 	};
 
 
@@ -106,16 +125,35 @@ namespace DB::query {
 
 	struct Exit
 	{
+		void print() const
+		{
+			std::cout << "exit" << std::endl;
 
+		}
 	};
 
 	struct ErrorMsg {
-		std::string msg;
+		std::string _msg;
+		
+		ErrorMsg(const std::string msg)
+		{
+			_msg = msg;
+		}
+
+		void print() const
+		{
+			std::cout << _msg << std::endl;
+		}
 	};
 
 	//return type to vm, any exception that occurs will be catched and converted into ErrorMsg
 	using SQLValue = std::variant < CreateTableInfo, DropTableInfo, SelectInfo, UpdateInfo, InsertInfo, DeleteInfo, Exit, ErrorMsg>;
 
-
+	template <typename PrintTp>
+	void print(const PrintTp &p) 
+	{
+		p.print();
+	}
+	
 
 }	//end namespace DB::query

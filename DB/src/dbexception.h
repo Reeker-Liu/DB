@@ -8,6 +8,7 @@ namespace DB
 	{
 	public:
 		void printException() const { this->printEx(); }
+		virtual const std::string str() const = 0;
 	private:
 		virtual void printEx() const = 0;
 	};
@@ -19,6 +20,10 @@ namespace DB
 	public:
 		DB_Exception(std::string msg)
 			:_msg(std::move(msg)) {}
+		virtual const std::string str() const
+		{
+			return _msg;
+		}
 		friend std::ostream& operator<<(std::ostream& os, const DB_Exception& e)
 		{
 			os << e._msg ;
@@ -38,6 +43,10 @@ namespace DB
 	public:
 		DB_Universal_Exception(std::string msg, std::size_t position)
 			:_msg(std::move(msg)), _position(position) {}
+		virtual const std::string str() const
+		{
+			return _msg + " at position: " + std::to_string(1 + _position);
+		}
 		friend std::ostream& operator<<(std::ostream& os, const DB_Universal_Exception& e)
 		{
 			os << e._msg <<  " at position: " << 1 + e._position;

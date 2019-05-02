@@ -84,7 +84,7 @@ namespace DB
 	using createDefinition = ColumnInfo;
 	using dataType = col_t_t; //type, len
 	using columnConstraint = ColumnInfo;
-	using insertElement = Elements;
+	using insertElements = Elements;
 	using updateElements = Elements;
 	using updateElement = Element;
 	using selectElements = ProjectOp*;
@@ -163,17 +163,24 @@ namespace DB
 
 	createDefinitions := "(" createDefinition [{"," createDefinition}*] ")", =
 					{
-						auto& l = std::get<vector<ColumnInfo>>(left.object);
-						size_t size = right.size();
-						for(size_t i = 1; i < size - 1; i += 2)
+						auto& l = get<vector<ColumnInfo>>(left.object);
+						l.push_back(get<ColumnInfo>(right[1].object));
+
+						if(right.size() < 4)
+							return;
+
+						auto _right = get<iter_object_type>(right[2].object).data;
+						size_t size = _right.size();
+
+						for(size_t i = 1; i < size; i += 2)
 						{
-							l.push_back(get<ColumnInfo>(right[i].object));
+							l.push_back(get<ColumnInfo>(_right[i].object));
 						}
 					}
 					;
-
+ 
 	// need tableConstraint
-	createDefinition := "ID" dataType columnConstraint*, =
+	createDefinition := "ID" dataType [columnConstraint*], =
 					{
 						auto& l = std::get<ColumnInfo>(left.object);
 						auto& token = get<Token>(right[0].object);
@@ -184,10 +191,13 @@ namespace DB
 
 						//no duplicate checking on columnConstraint,
 						//the last one overwrite the original
-						size_t size = right.size();
-						for(size_t i = 2; i < size; ++i)
+						if(right.size() <= 2)
+							return;
+						auto _right = get<iter_object_type>(right[2].object).data;
+						size_t size = _right.size();
+						for(size_t i = 0; i < size; ++i)
 						{
-							ColumnInfo& column = get<ColumnInfo>(right[i].object);
+							ColumnInfo& column = get<ColumnInfo>(_right[i].object);
 							if(column.isPK())
 							{
 								l.setPK();
@@ -265,27 +275,42 @@ namespace DB
 
 
 	// Data Manipulation Language
-	insertStatement := "INSERT" tableName ["(" "ID" [{"," "ID"}*] ")"] insertElements, =
+	insertStatement := "INSERT" tableName insertElements, =
 					{
 						//match ID and value in insertElement
 						auto& l = get<InsertInfo>(left.object);
+						l.elements = get<Elements>(right[2].object);
+						l.sourceTable = get<string>(right[1].object);
+					}
+					| "INSERT" tableName "(" "ID" [{"," "ID"}*] ")" insertElements, =
+					{
+						//match ID and value in insertElement
+						auto& l = get<InsertInfo>(left.object);
+						l.sourceTable = get<string>(right[1].object);
+						l.elements = get<Elements>(right[right.size() - 1].object);
+
 						vector<string> columnNames;
-						size_t size = right.size();
-						for(size_t i = 3; i < size - 2; i += 2)
+						auto& token = get<Token>(right[3].object);
+						columnNames.push_back(get<identifier>(token._token));
+
+						if(right.size() <= 6)
+							return;
+
+						auto _right = get<iter_object_type>(right[4].object).data;
+						size_t size = _right.size();
+						for(size_t i = 1; i < size; i += 2)
 						{
-							auto& token = get<Token>(right[i].object);
+							auto& token = get<Token>(_right[i].object);
 							columnNames.push_back(get<identifier>(token._token));
 						}
-						auto& elements = get<Elements>(right[size-1].object);
-						if(columnNames.size() != elements.size())
+
+						if(columnNames.size() != l.elements.size())
 							throw DB_Exception("the number of columns and elements don't match");
 						
-						for(size_t i = 0; i < elements.size(); ++i)
+						for(size_t i = 0; i < l.elements.size(); ++i)
 						{
-							elements[i].name = columnNames[i];
+							l.elements[i].name = columnNames[i];
 						}
-						l.sourceTable = get<string>(right[1].object);
-						l.elements = elements;
 					}
 					;
 
@@ -293,7 +318,7 @@ namespace DB
 					{
 						auto& l = get<DeleteInfo>(left.object);
 						l.sourceTable = get<string>(right[2].object);
-						if(right.size() == 5)
+						if(right.size() > 3)
 						{
 							l.whereExpr = get<BaseExpr*>(right[4].object);
 							std::cout << "\n--output where expression in delete statment---------------------------------------\n" << std::endl;
@@ -308,7 +333,7 @@ namespace DB
 						auto& l = get<UpdateInfo>(left.object);
 						l.sourceTable = get<string>(right[1].object);
 						l.elements = get<Elements>(right[3].object);
-						if(right.size() == 6)
+						if(right.size() > 4)
 						{
 							l.whereExpr = get<BaseExpr*>(right[5].object);
 							std::cout << "\n--output where expression in update statment---------------------------------------\n" << std::endl;
@@ -336,7 +361,7 @@ namespace DB
 							std::cout << "\n--end output in select statment---------------------------------------\n" << std::endl;
 						}
 					brk:
-						ProjectOp* projectOp = get<ProjectOp*>(right[2].object);
+						ProjectOp* projectOp = get<ProjectOp*>(right[1].object);
 						projectOp->_source = baseOp;
 						l.opRoot = projectOp;
 
@@ -348,11 +373,21 @@ namespace DB
 	insertElements := "VALUES" "(" expressionAtom [{"," expressionAtom}*] ")", =
 					{
 						auto& l = get<Elements>(left.object);
-						size_t size = right.size();
-						for(size_t i = 2; i < size; i += 2)
+						Element ele;
+						ele.valueExpr = get<AtomExpr*>(right[2].object);
+						std::cout << "\n--output expression in insert element---------------------------------------\n" << std::endl;
+						outputVisit(ele.valueExpr, std::cout);
+						std::cout << "\n--end output in insert element---------------------------------------\n" << std::endl;
+						l.push_back(ele);
+						if(right.size() <= 4)
+							return;
+						
+						auto _right = get<iter_object_type>(right[3].object).data;
+						size_t size = _right.size();
+						for(size_t i = 1; i < size; i += 2)
 						{
 							Element ele;
-							ele.valueExpr = get<AtomExpr*>(right[i].object);
+							ele.valueExpr = get<AtomExpr*>(_right[i].object);
 							std::cout << "\n--output expression in insert element---------------------------------------\n" << std::endl;
 							outputVisit(ele.valueExpr, std::cout);
 							std::cout << "\n--end output in insert element---------------------------------------\n" << std::endl;
@@ -364,10 +399,15 @@ namespace DB
 	updateElements := updateElement [{"," updateElement}*], =
 					{
 						auto& l = get<Elements>(left.object);
-						size_t size = right.size();
-						for(size_t i = 0; i < size; i += 2)
+						l.push_back(get<Element>(right[0].object));	
+
+						if(right.size() == 1)
+							return;
+						auto _right = get<iter_object_type>(right[1].object).data;
+						size_t size = _right.size();
+						for(size_t i = 1; i < size; i += 2)
 						{
-							l.push_back(get<Element>(right[i].object));
+							l.push_back(get<Element>(_right[i].object));
 						}
 					}
 					;
@@ -375,7 +415,7 @@ namespace DB
 	updateElement := columnName "=" {expressionAtom | "DEFAULT"}, =
 					{
 						auto& l = get<Element>(left.object);
-						l.name = get<string>(right[0].object);
+						l.name = get<Column>(right[0].object).second;
 						if(auto expr = get_if<AtomExpr*>(&right[2].object))
 						{
 							l.isDefault = false;
@@ -401,10 +441,22 @@ namespace DB
 					{
 						auto& l = get<ProjectOp*>(left.object);
 						l = new ProjectOp();
-						size_t size = right.size();
-						for(size_t i = 0; i < size; i += 2)
+
+						vector<AtomExpr*> exprs;
+						exprs.push_back(get<AtomExpr*>(right[0].object));
+
+						if(right.size() > 1)
 						{
-							AtomExpr* expr = get<AtomExpr*>(right[i].object);
+							auto _right = get<iter_object_type>(right[1].object).data;
+							size_t size = _right.size();
+							for(size_t i = 1; i < size; i += 2)
+								exprs.push_back(get<AtomExpr*>(_right[i].object));
+
+						}
+
+						for(size_t i = 0; i < exprs.size(); ++i)
+						{
+							auto expr = exprs[i];
 							l->_elements.push_back(expr);
 							std::cout << "\n--output express in select element---------------------------------------\n" << std::endl;
 							outputVisit(expr, std::cout);
@@ -446,10 +498,16 @@ namespace DB
 					auto& l = get<JoinOp*>(left.object);
 					l = new JoinOp();
 					l->isJoin = false;
-					size_t size = right.size();
+					l->_sources.push_back(new TableOp(get<string>(right[1].object)));
+
+					if(right.size() <= 2)
+						return;
+
+					auto _right = get<iter_object_type>(right[1].object).data;
+					size_t size = _right.size();
 					for(size_t i = 1; i < size; i += 2)
 					{
-						l->_sources.push_back(new TableOp(get<string>(right[i].object)));
+						l->_sources.push_back(new TableOp(get<string>(_right[i].object)));
 					}
 				}
 				| "FROM" tableName "JOIN" tableName, =
