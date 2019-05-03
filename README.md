@@ -174,8 +174,10 @@ check visit, used in parsing phase
 2. check the type matching,
 
    such as `WHERE "wtf" AND TableA.name == 123`
-   *		here string `"wtf"` is not supported by logicalOp `AND`
-   *		string `TableA.name` and number `123` don't matched
+
+   ​	here string `"wtf"` is not supported by logicalOp `AND`
+
+   ​	string `TableA.name` and number `123` don't matched
 
 for any mismatching, throw DB_Exception
 if passing, it is guaranteed other visit function will never encounter unexcepted cases
