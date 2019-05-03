@@ -15,32 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\lexer.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\util.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dbexception.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\query.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\VM.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\table.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ast.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="src\parse.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\lexer.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -59,5 +33,28 @@
     <ClCompile Include="src\vm.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\include\ast.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\lexer.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\parse.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\query.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\table.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\util.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\include\vm.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

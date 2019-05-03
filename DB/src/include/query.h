@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 #include <vector>
 #include <variant>
@@ -27,7 +28,6 @@ namespace DB::query {
 
 	struct Element {
 		std::string name;
-		bool isDefault;
 		ast::AtomExpr* valueExpr;
 	};
 	using Elements = std::vector<Element>;
@@ -39,14 +39,9 @@ namespace DB::query {
 			std::cout << "Insert into table : " << sourceTable << std::endl;
 			for (const Element &ele : elements)
 			{
-				std::cout << "Column : " << ele.name;
-				if (ele.isDefault)
-					std::cout << "\t Default value" << std::endl;
-				else
-				{
-					std::cout << std::endl;
-					ast::outputVisit(ele.valueExpr, std::cout);
-				}
+				std::cout << "Column : " << ele.name << std::endl;
+				ast::outputVisit(ele.valueExpr, std::cout);
+				
 			}
 		}
 	};
@@ -60,14 +55,8 @@ namespace DB::query {
 			std::cout << "Update table : " << sourceTable << std::endl;
 			for (const Element &ele : elements)
 			{
-				std::cout << "Column : " << ele.name;
-				if (ele.isDefault)
-					std::cout << "\t Default value" << std::endl;
-				else
-				{
-					std::cout << std::endl;
-					ast::outputVisit(ele.valueExpr, std::cout);
-				}
+				std::cout << "Column : " << ele.name << std::endl;
+				ast::outputVisit(ele.valueExpr, std::cout);
 			}
 			std::cout << "Where Expression:" << std::endl;
 			ast::outputVisit(whereExpr, std::cout);

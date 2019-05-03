@@ -1,12 +1,9 @@
 #pragma once
 #include <iostream>
-#include "query.h"
-#include "dbexception.h"
-#include "util.h"
-#include "VM.h"
-#include "lexer.h"
-#include "ast.h"
-#include "parse.h"
+#include "include/query.h"
+#include "include/util.h"
+#include "include/lexer.h"
+#include "include/parse.h"
 
 namespace DB::query {
 
@@ -44,6 +41,11 @@ namespace DB::query {
 		{
 			e.printException(); std::cout << std::endl;
 			return ErrorMsg(e.str());	//change to details
+		}
+		catch (const std::string &e)
+		{
+			std::cout << e << std::endl;
+			return ErrorMsg(e);
 		}
 		catch (const std::exception& e) { std::cout << e.what() << std::endl << std::endl; }
 		catch (...) { std::cout << "Unexpected Exception" << std::endl << std::endl; }

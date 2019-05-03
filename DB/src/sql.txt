@@ -1,3 +1,4 @@
+SELECT $ FROM USER
 SELECT id + 1, "NAME:" + name FROM USER JOIN CLASS WHERE CLASS.no > 666 AND USER.id * USER.id > 3 + USER.id AND USER.name == CLASS.name + 'huaji'
 CREATE TABLE USER(id INT PK, name VARCHAR(20))
 INSERT USER(id,name) VALUES(123 * 6 + 233, "huaji" + "666")

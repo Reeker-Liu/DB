@@ -73,11 +73,18 @@ namespace DB::table {
 		std::vector<Row*> rows;
 	};
 
-
 	//need locks for mutli-threading
 	static std::unordered_map<std::string, table::TableInfo> tableBuffer;
 
 	table::TableInfo getTableInfo(const std::string& tableName);
 
 	table::ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName);
+	
+	/*
+	bool is_PK(const std::string& tableName, const std::string& col_name);
+	bool is_FK(const std::string& tableName, const std::string& col_name);
+	bool is_not_null(const std::string& tableName, const std::string& col_name);
+	bool is_default_col(const std::string& tableName, const std::string& col_name);
+	RetValue get_default_value(const std::string& tableName, const std::string& col_name);
+	*/
 }

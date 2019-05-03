@@ -307,7 +307,7 @@ namespace DB
 						}
 
 						if(columnNames.size() != l.elements.size())
-							throw DB_Exception("the number of columns and elements don't match");
+							throw string("the number of columns and elements don't match");
 						
 						for(size_t i = 0; i < l.elements.size(); ++i)
 						{
@@ -364,8 +364,16 @@ namespace DB
 						}
 					brk:
 						ProjectOp* projectOp = get<ProjectOp*>(right[1].object);
-						projectOp->_source = baseOp;
-						l.opRoot = projectOp;
+						if(projectOp)
+						{
+							projectOp->_source = baseOp;
+							l.opRoot = projectOp;
+						}
+						else
+						{
+							l.opRoot = baseOp;
+						}
+						
 
 						//currently not handle orderby
 					}
@@ -414,22 +422,15 @@ namespace DB
 					}
 					;
 
-	updateElement := columnName "=" {expressionAtom | "DEFAULT"}, =
+	updateElement := columnName "=" expressionAtom, =
 					{
 						auto& l = get<Element>(left.object);
 						l.name = get<Column>(right[0].object).second;
-						if(auto expr = get_if<AtomExpr*>(&right[2].object))
-						{
-							l.isDefault = false;
-							l.valueExpr = *expr;
-							std::cout << "\n--output expression in update element---------------------------------------\n" << std::endl;
-							outputVisit(l.valueExpr, std::cout);
-							std::cout << "\n--end output in update element---------------------------------------\n" << std::endl;
-						}
-						else
-						{
-							l.isDefault = true;
-						}
+						auto &expr = get<AtomExpr*>(right[2].object);
+						l.valueExpr = expr;
+						std::cout << "\n--output expression in update element---------------------------------------\n" << std::endl;
+						outputVisit(l.valueExpr, std::cout);
+						std::cout << "\n--end output in update element---------------------------------------\n" << std::endl;
 					}
 					;	  
 						  
@@ -437,7 +438,7 @@ namespace DB
 	selectElements := "$", = 
 					{
 						auto& l = get<ProjectOp*>(left.object);
-						l = new ProjectOp();
+						l = nullptr;
 					}
 					| expressionAtom [{"," expressionAtom}*], =
 					{

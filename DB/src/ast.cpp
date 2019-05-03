@@ -1,6 +1,5 @@
-#include "ast.h"
-#include "dbexception.h"
-#include "VM.h"
+#include "include/ast.h"
+#include "include/vm.h"
 
 #define DEBUG
 
@@ -43,35 +42,30 @@ namespace DB::ast {
 	table::VirtualTable ProjectOp::getOutput()
 	{
 		table::VirtualTable table = _source->getOutput();
-		return vm::projectTable(table, _elements);
+		return vm::projection(table, _elements);
 	}
 
 	table::VirtualTable FilterOp::getOutput()
 	{
 		table::VirtualTable table = _source->getOutput();
-		return vm::filterTable(table, _whereExpr);
+		return vm::sigma(table, _whereExpr);
 	}
 
 	table::VirtualTable JoinOp::getOutput()
 	{
-		std::vector<table::VirtualTable> tables;
-		for (auto& source : _sources)
+		if (isJoin)
+			return vm::join(_sources[0]->getOutput(), _sources[1]->getOutput(), true);
+		table::VirtualTable table = _sources[0]->getOutput();
+		for (size_t i = 1; i < _sources.size(); ++i)
 		{
-			tables.push_back(source->getOutput());
+			table = vm::join(table, _sources[i]->getOutput(), false);
 		}
-		return vm::joinTables(tables, this->isJoin);
+		return table;
 	}
 
 	table::VirtualTable TableOp::getOutput()
 	{
-		if (auto table = vm::getVirtualTable(this->_tableName))
-		{
-			return table.value();
-		}
-		else
-		{
-			throw DB_Exception("no such table \"" + this->_tableName + "\"");
-		}
+		return vm::scanTable(this->_tableName);
 	}
 
 
@@ -177,10 +171,16 @@ namespace DB::ast {
 		case DB::ast::op_t_t::JOIN:
 		{
 			const JoinOp* joinOp = static_cast<const JoinOp*>(root);
-			if (joinOp->isJoin)
-				os << "Join on " << std::endl;
+			if (joinOp->_sources.size() > 1)
+			{
+				if (joinOp->isJoin)
+					os << "Join on " << std::endl;
+				else
+					os << "Cartesian product on" << std::endl;
+			}
 			else
-				os << "Cartesian product on" << std::endl;
+				--indent;
+			
 			for (auto source : joinOp->_sources)
 				_outputVisit(source, os, indent);
 		}
@@ -220,7 +220,7 @@ namespace DB::ast {
 
 			//RetValue here must be bool
 			if (left_t != check_t_t::BOOL || right_t != check_t_t::BOOL)
-				throw DB_Exception("operation '" + op + "' only support bool oprands");
+				throw std::string("operation '" + op + "' only support bool oprands");
 			return check_t_t::BOOL;
 		}
 		case base_t_t::COMPARISON_OP:
@@ -235,12 +235,12 @@ namespace DB::ast {
 			{
 				if (left_t == check_t_t::STRING)
 					if (comparisonPtr->comparison_t_ != comparison_t_t::EQ && comparisonPtr->comparison_t_ != comparison_t_t::NEQ)
-						throw DB_Exception("unsupported operation '" + op + "' on strings");
+						throw std::string("unsupported operation '" + op + "' on strings");
 				return check_t_t::BOOL;
 			}
 			else
 			{
-				throw DB_Exception("'" + op + "' on mismatched type " + check2str[int(left_t)] + ", " + check2str[int(right_t)]);
+				throw std::string("'" + op + "' on mismatched type " + check2str[int(left_t)] + ", " + check2str[int(right_t)]);
 			}
 
 		}
@@ -249,7 +249,7 @@ namespace DB::ast {
 		case base_t_t::NUMERIC:
 		case base_t_t::STR:
 		default:
-			throw DB_Exception("wrong type " + base2str[int(base_t)] + " for WHERE clause");
+			throw std::string("wrong type " + base2str[int(base_t)] + " for WHERE clause");
 		}
 	}
 
@@ -257,7 +257,7 @@ namespace DB::ast {
 	{
 #ifdef DEBUG
 		if (!root)
-			throw DB_Exception("BaseExpr* root is nullptr");
+			throw std::string("BaseExpr* root is nullptr");
 #endif // DEBUG
 		_checkVisit(root, tableName);
 	}
@@ -278,13 +278,13 @@ namespace DB::ast {
 			{
 				if (left_t == check_t_t::STRING && mathPtr->math_t_ != math_t_t::ADD)
 				{
-					throw DB_Exception("unsupported operation '" + op + "' on string");
+					throw std::string("unsupported operation '" + op + "' on string");
 				}
 				return left_t;
 			}
 			else
 			{
-				throw DB_Exception("'" + op + "' on mismatched type " + check2str[int(left_t)] + ", " + check2str[int(right_t)]);
+				throw std::string("'" + op + "' on mismatched type " + check2str[int(left_t)] + ", " + check2str[int(right_t)]);
 			}
 		}
 		case base_t_t::NUMERIC:
@@ -310,7 +310,7 @@ namespace DB::ast {
 		case base_t_t::LOGICAL_OP:
 		case base_t_t::COMPARISON_OP:
 		default:
-			throw DB_Exception("wrong type for atom");
+			throw std::string("wrong type for atom");
 		}
 	}
 
@@ -318,7 +318,7 @@ namespace DB::ast {
 	{
 #ifdef DEBUG
 		if (!root)
-			throw DB_Exception("AtomExpr* root is nullptr");
+			throw std::string("AtomExpr* root is nullptr");
 #endif // DEBUG
 		_checkVisit(root, tableName);
 	}
@@ -342,7 +342,7 @@ namespace DB::ast {
 			return op1 % op2;
 		default:
 			// no expect to happen
-			throw DB_Exception("wrong math operation type");
+			throw std::string("wrong math operation type");
 		}
 	}
 
@@ -364,7 +364,7 @@ namespace DB::ast {
 			return op1 >= op2;
 		default:
 			// no expect to happen
-			throw DB_Exception("wrong comparison operation type");
+			throw std::string("wrong comparison operation type");
 		}
 	}
 
@@ -425,7 +425,7 @@ namespace DB::ast {
 		}
 #ifdef DEBUG
 		default:
-			throw DB_Exception("WTF");
+			throw std::string("WTF");
 #endif // DEBUG
 		}
 	}
@@ -434,7 +434,7 @@ namespace DB::ast {
 	{
 #ifdef DEBUG
 		if (!root)
-			throw DB_Exception("BaseExpr* root is nullptr");
+			throw std::string("BaseExpr* root is nullptr");
 #endif // DEBUG
 		return _vmVisit(root, row);
 	}
@@ -484,12 +484,12 @@ namespace DB::ast {
 		{
 			const IdExpr* idPtr = static_cast<const IdExpr*>(root);
 			if (!row)
-				throw DB_Exception("value of record cannot be used here");
+				throw std::string("value of record cannot be used here");
 			return vm::getValue(row, idPtr->_tableName, idPtr->_columnName);
 		}
 #ifdef DEBUG
 		default:
-			throw DB_Exception("WTF");
+			throw std::string("WTF");
 #endif // DEBUG
 		}
 	}
@@ -498,7 +498,7 @@ namespace DB::ast {
 	{
 #ifdef DEBUG
 		if (!root)
-			throw DB_Exception("AtomExpr* root is nullptr");
+			throw std::string("AtomExpr* root is nullptr");
 #endif // DEBUG
 		return _vmVisit(root, row);
 	}

@@ -22,11 +22,9 @@
 ### todo
 
 - //supplement development documentation
-- print SQLValue result
 - change CreateTableInfo
 - check pk nums
 - tsl delay check till know tablename
-- BaseOp need op_t_t?
 - RetValue need bool?
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 - debug/log
@@ -35,7 +33,7 @@
 
 ### Expansibility
 
-- source of DML op structs should be a class, such as ExprTableSource、JoinTableSource、SubqueryTableSource
+- source of DML op structs should be a class, such as singleTableSource ExprTableSource、JoinTableSource、SubqueryTableSource
 
 
 
@@ -53,6 +51,8 @@
 
 
 # Implementation
+
+![1556805209071](C:\Users\TR\AppData\Roaming\Typora\typora-user-images\1556805209071.png)
 
 ### lexer
 

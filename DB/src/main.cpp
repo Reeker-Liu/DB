@@ -1,7 +1,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
-#include "query.h"
+#include "include/query.h"
 
 constexpr std::size_t MAXSIZE = 256;
 char buffer[MAXSIZE];

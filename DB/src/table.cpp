@@ -1,6 +1,5 @@
-#include "table.h"
-#include"dbexception.h"
-#include "VM.h"
+#include "include/table.h"
+#include "include/vm.h"
 
 namespace DB::table {
 	table::TableInfo getTableInfo(const std::string& tableName)
@@ -13,7 +12,7 @@ namespace DB::table {
 			}
 			else
 			{
-				throw DB_Exception("no such table \"" + tableName + "\"");
+				throw std::string("no such table \"" + tableName + "\"");
 			}
 		}
 		return tableBuffer[tableName];
@@ -29,6 +28,6 @@ namespace DB::table {
 			if (column.columnName == columnName)
 				return column;
 		}
-		throw DB_Exception("no such column \"" + columnName + "\" in \"" + tableName + "\"");
+		throw std::string("no such column \"" + columnName + "\" in \"" + tableName + "\"");
 	}
 }

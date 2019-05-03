@@ -1,6 +1,4 @@
 #pragma once
-#ifndef _LEXER_H
-#define _LEXER_H
 #include <variant>
 #include <utility>
 #include <fstream>
@@ -13,6 +11,44 @@
 #include "util.h"
 
 #undef NULL
+
+namespace DB
+{
+	class DB_Base_Exception
+	{
+	public:
+		void printException() const { this->printEx(); }
+		virtual const std::string str() const = 0;
+	private:
+		virtual void printEx() const = 0;
+	};
+
+	/*
+	 * Universal Exception class.
+	 *     display specific error message, line num, and position.
+	 */
+	class DB_Universal_Exception : public DB_Base_Exception
+	{
+		const std::string _msg;
+		const std::size_t _position;
+		virtual void printEx() const { std::cout << (*this) << std::endl; }
+	public:
+		DB_Universal_Exception(std::string msg, std::size_t position)
+			:_msg(std::move(msg)), _position(position) {}
+		virtual const std::string str() const
+		{
+			return _msg + " at position: " + std::to_string(1 + _position);
+		}
+		friend std::ostream& operator<<(std::ostream& os, const DB_Universal_Exception& e)
+		{
+			os << e._msg << " at position: " << 1 + e._position;
+			return os;
+		}
+	};
+
+
+}
+
 
 namespace std {
 	template<> struct hash<const std::string> {
@@ -243,4 +279,3 @@ namespace DB::lexer
 
 }// end namespace DB::lexer
 
-#endif // !_LEXER_H
