@@ -138,7 +138,7 @@ DROP TABLE USER
 
 ### Dependency relationship
 
-![Dependency relationship](pic\DependencyRelationship.png)
+![Dependency relationship](pic/DependencyRelationship.png)
 
 ### AST
 
