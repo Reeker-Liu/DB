@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <vector>
 #include <deque>
-#include "util.h"
 
 #undef NULL
 
@@ -61,7 +60,6 @@ namespace std {
 
 namespace DB::lexer
 {
-	using namespace util;
 
 	enum class numeric_type { INT };
 	using numeric_t = std::tuple<const int, const numeric_type>;

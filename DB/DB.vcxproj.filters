@@ -50,9 +50,6 @@
     <ClInclude Include="src\include\table.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="src\include\util.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="src\include\vm.h">
       <Filter>头文件</Filter>
     </ClInclude>

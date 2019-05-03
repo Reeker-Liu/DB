@@ -1,9 +1,14 @@
 #pragma once
 #include <iostream>
 #include "include/query.h"
-#include "include/util.h"
 #include "include/lexer.h"
 #include "include/parse.h"
+
+namespace DB::util
+{
+	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+}
 
 namespace DB::query {
 

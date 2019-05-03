@@ -33,7 +33,6 @@
     <ClInclude Include="src\include\parse.h" />
     <ClInclude Include="src\include\query.h" />
     <ClInclude Include="src\include\table.h" />
-    <ClInclude Include="src\include\util.h" />
     <ClInclude Include="src\include\vm.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

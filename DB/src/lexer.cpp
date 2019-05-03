@@ -13,6 +13,11 @@ using std::make_tuple;
 using std::unordered_map;
 using keyword_it = unordered_map<string, type>::const_iterator;
 
+namespace DB::util
+{
+	template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+	template<class... Ts> overloaded(Ts...)->overloaded<Ts...>;
+}
 
 namespace DB::lexer {
 	std::string type2str(type _type) noexcept
@@ -229,7 +234,7 @@ namespace DB::lexer
 	{
 		_token_stream.clear();
 		auto result = DB::lexer::tokenize(s, size);
-		std::visit(overloaded{
+		std::visit(util::overloaded{
 			[](const DB::lexer::analyzers::Token_Ex& e) {
 				throw DB::DB_Universal_Exception{
 						std::move(const_cast<DB::lexer::analyzers::Token_Ex&>(e)._msg),
@@ -275,7 +280,7 @@ namespace DB::lexer
 		for (Token const& token : _token_stream)
 		{
 			out <<  "pos:" << token._pos << "\t\t";
-			std::visit(overloaded{
+			std::visit(util::overloaded{
 					[&out](const DB::lexer::type& _type) { out << "type: " << "\t\t\t" << std::quoted(DB::lexer::type2str(_type)) << std::endl; },
 					[&out](const DB::lexer::identifier& _identifier) { out << "identifier: " << "\t\t" << _identifier << std::endl; },
 					[&out](const DB::lexer::numeric_t& _num) { out << "numeric: " << "\t\t" << std::quoted(DB::lexer::type2str(num_t2type(std::get<const DB::lexer::numeric_type>(_num)))) << "\t"; out << std::get<const int>(_num); out << std::endl; },
