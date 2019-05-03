@@ -12,7 +12,17 @@ namespace DB::query {
 	
 	//===========================================================
 	//DDL
-	using CreateTableInfo = table::TableInfo;
+	struct CreateTableInfo
+	{
+		table::TableInfo tableInfo;
+		std::vector<table::value_t> defaults;
+		std::vector<std::string> fkTables;
+		void print() const
+		{
+			std::cout << "Create table : " << tableInfo.tableName_ << std::endl;
+		}
+	};
+
 	struct DropTableInfo
 	{
 		std::string tableName;

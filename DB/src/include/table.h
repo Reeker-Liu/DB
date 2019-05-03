@@ -3,65 +3,55 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <variant>
+#include "page.h"
+
+namespace DB::vm { class VM; }
 
 namespace DB::table {
-	using int8_t = __int8;
-	using uint8_t = unsigned __int8;
-	using int16_t = __int16;
-	using uint16_t = unsigned __int16;
-	using int32_t = __int32;
-	using uint32_t = unsigned __int32;
-	using int64_t = __int64;
-	using uint64_t = unsigned __int64;
-	using float32 = float;
-	using float64 = double;
-	static_assert(sizeof(float) == sizeof(int32_t));
-	static_assert(sizeof(double) == sizeof(int64_t));
+	static vm::VM* vm_;
 
-	enum class col_t_t { INT, CHAR, VARCHAR };
-	enum constraint_t_t { PK = 1, FK = 2, NOT_NULL = 4, DEFAULT = 8, };
-	struct ColumnInfo {
-		std::string columnName;
-		col_t_t col_t_;
-		uint32_t str_len_;      // used when col_t_ = `CHAR` or `VARCHAR`
-		uint32_t constraint_t_;
-		std::string fkTable;
-		std::string defaultStr;
-		int defaultInt;
-		bool isPK() const noexcept { return constraint_t_ & constraint_t_t::PK; }
-		bool isFK() const noexcept { return constraint_t_ & constraint_t_t::FK; }
-		bool isNOT_NULL() const noexcept { return constraint_t_ & constraint_t_t::NOT_NULL; }
-		bool isDEFAULT() const noexcept { return constraint_t_ & constraint_t_t::DEFAULT; }
-		void setPK() { constraint_t_ |= constraint_t_t::PK; }
-		void setFK() { constraint_t_ |= constraint_t_t::FK; }
-		void setNOT_NULL() { constraint_t_ |= constraint_t_t::NOT_NULL; }
-		void setDEFAULT() { constraint_t_ |= constraint_t_t::DEFAULT; }
-	};
-
-	using Column = std::pair<std::string, std::string>;	//table column
+	using value_t = std::variant<int32_t, std::string>;
 
 	struct TableInfo
 	{
-		std::string tableName;
-		std::vector<ColumnInfo> columnInfos;
-		uint32_t pk;
-		std::vector<uint32_t> fks;
-		std::vector<uint32_t> defaults;
-		void reset()
-		{
-			fks.clear();
-			defaults.clear();
-			for (size_t i = 0, size = columnInfos.size(); i < size; ++i)
-			{
-				ColumnInfo& column = columnInfos[i];
-				if (column.isPK())
-					pk = i;
-				if (column.isFK())
-					fks.push_back(i);
-				if (column.isDEFAULT())
-					defaults.push_back(i);
-			}
-		}
+		TableInfo(){ }
+
+		TableInfo(std::string tableName,
+			std::vector<page::ColumnInfo> columnInfos,
+			std::vector<std::string> colNames,
+			vm::VM* vm);
+
+		void reset(vm::VM* vm);
+
+		bool hasPK() const;
+		page::key_t_t PK_t() const;
+
+		// return NOT_A_PAGE if not fk
+		page::page_id_t fk_ref_table_id(uint32_t fk_col);
+
+		// init from outside
+		std::string tableName_;
+		std::vector<page::ColumnInfo> columnInfos_;
+		std::vector<std::string> colNames_;
+		const std::unordered_map<page::page_id_t,
+			std::unordered_map<int32_t, uint32_t>>*table_pk_ref_INT;
+		const std::unordered_map<page::page_id_t,
+			std::unordered_map<std::string, uint32_t>>*table_pk_ref_VARCHAR;
+
+		// should init
+		//uint32_t pk_col_ = page::TableMetaPage::NOT_A_COLUMN;
+		std::vector<std::pair<uint32_t, page::page_id_t>> fks_; // fk col -> table meta page
+	};
+
+
+
+	struct table_view
+	{
+		table_view() {}
+
+
+		std::shared_ptr<const TableInfo> table_info_;
 	};
 
 	struct Row
@@ -78,7 +68,7 @@ namespace DB::table {
 
 	table::TableInfo getTableInfo(const std::string& tableName);
 
-	table::ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName);
+	page::ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName);
 	
 	/*
 	bool is_PK(const std::string& tableName, const std::string& col_name);

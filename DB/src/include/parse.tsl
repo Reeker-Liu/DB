@@ -12,16 +12,18 @@ alias
 #include <deque>
 #include <stack>
 
+#include "page.h"
 #include "table.h"
 #include "ast.h"
 #include "lexer.h"
 #include "query.h"
 
 using namespace DB;
-using namespace DB::query;
+using namespace DB::page;
 using namespace DB::table;
 using namespace DB::ast;
 using namespace DB::lexer;
+using namespace DB::query;
 
 
 using std::stack;
@@ -33,6 +35,8 @@ using std::endl;
 using std::get;
 using std::get_if;
 using std::string;
+
+using Column = std::pair<std::string, std::string>;
 
 namespace DB
 {
@@ -73,7 +77,11 @@ namespace DB
 	pass_info_struct = {
         SQLValue sqlValue;
 		int len;	//for data type
-    };
+		vector<string> colNames_; //for create definition
+		vector<table::value_t> defaults; //for constrain default
+		vector<string> fkTables; //for constrain 
+	};
+	
 
 	using createTable = CreateTableInfo;
 	using dropTable = DropTableInfo;
@@ -84,7 +92,7 @@ namespace DB
 	using tableName = string;
 	using createDefinitions = std::vector<ColumnInfo>;
 	using createDefinition = ColumnInfo;
-	using dataType = col_t_t; //type, len
+	using dataType = col_t_t;
 	using columnConstraint = ColumnInfo;
 	using insertElements = Elements;
 	using updateElements = Elements;
@@ -150,9 +158,12 @@ namespace DB
 	createTable := "CREATE" "TABLE" tableName createDefinitions, =
 				{
 					auto& l = std::get<CreateTableInfo>(left.object);
-					l.tableName = get<string>(right[2].object);
-					l.columnInfos = get<vector<ColumnInfo>>(right[3].object);
-					l.reset();
+					string tableName = get<string>(right[2].object);
+					vector<ColumnInfo> columnInfos = get<vector<ColumnInfo>>(right[3].object);
+					vector<string> colNames = info.colNames_;
+					l.tableInfo = TableInfo(tableName, columnInfos, colNames, vm_);
+					l.defaults = info.defaults;
+					l.fkTables = info.fkTables;
 				}
 				;
 
@@ -185,8 +196,11 @@ namespace DB
 	createDefinition := "ID" dataType [columnConstraint*], =
 					{
 						auto& l = std::get<ColumnInfo>(left.object);
+
 						auto& token = get<Token>(right[0].object);
-						l.columnName = get<identifier>(token._token);
+						string columnName = get<identifier>(token._token);
+						info.colNames_.push_back(columnName);
+
 						auto& dataType = get<col_t_t>(right[1].object);
 						l.col_t_ = dataType;
 						l.str_len_ = info.len;
@@ -207,7 +221,6 @@ namespace DB
 							else if(column.isFK())
 							{
 								l.setFK();
-								l.fkTable = column.fkTable;
 							}
 							else if(column.isNOT_NULL())
 							{
@@ -216,8 +229,6 @@ namespace DB
 							else if(column.isDEFAULT())
 							{
 								l.setDEFAULT();
-								l.defaultStr = column.defaultStr;
-								l.defaultInt = column.defaultInt;
 							}
 						}
 					}
@@ -255,11 +266,11 @@ namespace DB
 						RetValue val = vmVisit(expr);
 						if(auto op = get_if<int>(&val))
 						{
-							l.defaultInt = *op;
+							info.defaults.push_back(*op);
 						}
 						else if(auto op = get_if<string>(&val))
 						{
-							l.defaultStr = *op;
+							info.defaults.push_back(*op);
 						}
 					}
 					| "PRIMARY_KEY", =
@@ -271,7 +282,8 @@ namespace DB
 					{
 						auto& l = get<ColumnInfo>(left.object);
 						l.setFK();
-						l.fkTable = get<string>(right[1].object);
+						string fkTable = get<string>(right[1].object);
+						info.fkTables.push_back(fkTable);
 					}
 					;
 

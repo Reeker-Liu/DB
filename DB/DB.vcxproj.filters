@@ -56,5 +56,8 @@
     <ClInclude Include="src\include\vm.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\include\page.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

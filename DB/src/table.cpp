@@ -2,13 +2,40 @@
 #include "include/vm.h"
 
 namespace DB::table {
+
+	TableInfo::TableInfo(std::string tableName,
+		std::vector<page::ColumnInfo> columnInfos,
+		std::vector<std::string> colNames,
+		vm::VM* vm)
+	{ }
+
+	void TableInfo::reset(vm::VM* vm)
+	{ }
+
+
+	bool TableInfo::hasPK() const
+	{
+		return true;
+	}
+
+	page::key_t_t TableInfo::PK_t() const
+	{
+		return page::key_t_t::INT;
+	}
+
+	// return NOT_A_PAGE if not fk
+	page::page_id_t TableInfo::fk_ref_table_id(uint32_t fk_col)
+	{
+		return 0;
+	}
+
 	table::TableInfo getTableInfo(const std::string& tableName)
 	{
 		if (tableBuffer.find(tableName) == tableBuffer.end())
 		{
-			if (auto table = vm::getTableInfo(tableName))
+			if (auto table = table::vm_->getTableInfo(tableName))
 			{
-				tableBuffer[table->tableName] = table.value();
+				tableBuffer[table->tableName_] = table.value();
 			}
 			else
 			{
@@ -18,15 +45,16 @@ namespace DB::table {
 		return tableBuffer[tableName];
 	}
 
-	table::ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName)
+	page::ColumnInfo getColumnInfo(const std::string& tableName, const std::string& columnName)
 	{
 
 		table::TableInfo table = getTableInfo(tableName);
-		auto& columns = table.columnInfos;
-		for (auto& column : columns)
+		auto& columns = table.columnInfos_;
+		auto& columnNames = table.colNames_;
+		for (size_t i = 0; i < columns.size(); ++i)
 		{
-			if (column.columnName == columnName)
-				return column;
+			if (columnNames[i] == columnName)
+				return columns[i];
 		}
 		throw std::string("no such column \"" + columnName + "\" in \"" + tableName + "\"");
 	}

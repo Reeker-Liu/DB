@@ -42,30 +42,30 @@ namespace DB::ast {
 	table::VirtualTable ProjectOp::getOutput()
 	{
 		table::VirtualTable table = _source->getOutput();
-		return vm::projection(table, _elements);
+		return table::vm_->projection(table, _elements);
 	}
 
 	table::VirtualTable FilterOp::getOutput()
 	{
 		table::VirtualTable table = _source->getOutput();
-		return vm::sigma(table, _whereExpr);
+		return table::vm_->sigma(table, _whereExpr);
 	}
 
 	table::VirtualTable JoinOp::getOutput()
 	{
 		if (isJoin)
-			return vm::join(_sources[0]->getOutput(), _sources[1]->getOutput(), true);
+			return table::vm_->join(_sources[0]->getOutput(), _sources[1]->getOutput(), true);
 		table::VirtualTable table = _sources[0]->getOutput();
 		for (size_t i = 1; i < _sources.size(); ++i)
 		{
-			table = vm::join(table, _sources[i]->getOutput(), false);
+			table = table::vm_->join(table, _sources[i]->getOutput(), false);
 		}
 		return table;
 	}
 
 	table::VirtualTable TableOp::getOutput()
 	{
-		return vm::scanTable(this->_tableName);
+		return table::vm_->scanTable(this->_tableName);
 	}
 
 
@@ -294,14 +294,14 @@ namespace DB::ast {
 		case base_t_t::ID:
 		{
 			const IdExpr* idPtr = static_cast<const IdExpr*>(root);
-			table::col_t_t id_t;
+			page::col_t_t id_t;
 			if (idPtr->_tableName.empty())
 				id_t = table::getColumnInfo(tableName, idPtr->_columnName).col_t_;
 			else
 				id_t = table::getColumnInfo(idPtr->_tableName, idPtr->_columnName).col_t_;
-			if (id_t == table::col_t_t::INT)
+			if (id_t == page::col_t_t::INT)
 				return check_t_t::INT;
-			else if (id_t == table::col_t_t::CHAR || id_t == table::col_t_t::VARCHAR)
+			else if (id_t == page::col_t_t::CHAR || id_t == page::col_t_t::VARCHAR)
 				return check_t_t::STRING;
 			//more data type...
 		}
@@ -485,7 +485,7 @@ namespace DB::ast {
 			const IdExpr* idPtr = static_cast<const IdExpr*>(root);
 			if (!row)
 				throw std::string("value of record cannot be used here");
-			return vm::getValue(row, idPtr->_tableName, idPtr->_columnName);
+			return table::vm_->getValue(row, idPtr->_tableName, idPtr->_columnName);
 		}
 #ifdef DEBUG
 		default:
