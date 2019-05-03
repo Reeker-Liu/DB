@@ -155,7 +155,7 @@ namespace DB::ast {
 	*		here string "wtf" is not supported by logicalOp AND,
 	*		string TableA.name and number 123 don't matched either
 	*
-	*for any dismatching, throw DB_Exception
+	*for any mismatching, throw DB_Exception
 	*if passing, it is guaranteed other visit function will never encounter unexcepted cases
 	*
 	*the visited expr won't be modified at present,
