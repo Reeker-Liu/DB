@@ -27,8 +27,8 @@ namespace DB::lexer {
 		return it->second;
 	}
 	type num_t2type(numeric_type num_t) noexcept {
-		return static_cast<type>(static_cast<std::size_t>(type::INT)
-			+ static_cast<std::size_t>(num_t) - static_cast<std::size_t>(numeric_type::INT));
+		return static_cast<type>(static_cast<std::size_t>(type::INTEGER)
+			+ static_cast<std::size_t>(num_t) - static_cast<std::size_t>(numeric_type::INTEGER));
 	}
 }
 
@@ -164,7 +164,7 @@ namespace DB::lexer::analyzers {
 		if (!isNum(s[pos]) )
 			return false;
 		int value = 0;
-		numeric_type type = numeric_type::INT;
+		numeric_type type = numeric_type::INTEGER;
 
 		while (pos < size) {
 			char c = s[pos];

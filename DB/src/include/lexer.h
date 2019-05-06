@@ -61,7 +61,7 @@ namespace std {
 namespace DB::lexer
 {
 
-	enum class numeric_type { INT };
+	enum class numeric_type { INTEGER };
 	using numeric_t = std::tuple<const int, const numeric_type>;
 
 	using identifier = const std::string;
@@ -93,7 +93,7 @@ namespace DB::lexer
 		NUMBER_CONSTANT, IDENTIFIER, STR_LITERAL,
 
 		/* numeric type */
-		INT,
+		INTEGER,
 
 		/* special keyword */
 		CHAR, VARCHAR, WILDCARD,
@@ -132,7 +132,7 @@ namespace DB::lexer
 		{ "=", type::ASSIGN },
 
 		/* numeric type */
-		{ "INT", type::INT }, 
+		{ "INT", type::INTEGER }, 
 
 		/* special keyword */
 		{ "CHAR", type::CHAR }, { "VARCHAR", type::VARCHAR }, { "$", type::WILDCARD },
@@ -171,7 +171,7 @@ namespace DB::lexer
 		{ type::ASSIGN, "=" },
 
 		/* numeric type */
-		{ type::INT, "INT" }, 
+		{ type::INTEGER, "INT" }, 
 
 		/* special keyword */
 		{ type::CHAR, "CHAR" }, { type::VARCHAR, "VARCHAR" }, { type::WILDCARD, "WILDCARD" },

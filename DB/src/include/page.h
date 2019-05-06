@@ -19,7 +19,7 @@ namespace DB::page
 
 	using page_id_t = uint32_t;
 
-	enum class col_t_t { INT, CHAR, VARCHAR };
+	enum class col_t_t { INTEGER, CHAR, VARCHAR };
 	using key_t_t = col_t_t;
 	enum constraint_t_t { PK = 1, FK = 2, NOT_NULL = 4, DEFAULT = 8, };
 	struct ColumnInfo {

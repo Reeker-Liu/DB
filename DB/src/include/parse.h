@@ -289,7 +289,7 @@ using $Tp = col_t_t;
 symbol_type left{ left_type, $Tp{} };
 auto run = [&left, &right, &info]() {
 auto& l = get<col_t_t>(left.object);
-l = col_t_t::INT;
+l = col_t_t::INTEGER;
 };
 run();
 __0_0(left, right, info);

@@ -203,7 +203,7 @@ namespace DB::ast {
 
 	//check visit
 	//using CheckValue = std::tuple< bool, base_t_t, RetValue>;	//<hasIdExpr, type, value>
-	enum class check_t_t { INT, STRING, BOOL };
+	enum class check_t_t { INTEGER, STRING, BOOL };
 	const std::string check2str[] = { "INT", "STRING", "BOOL" };
 
 	check_t_t _checkVisit(const BaseExpr* root, const std::string& tableName)
@@ -288,7 +288,7 @@ namespace DB::ast {
 			}
 		}
 		case base_t_t::NUMERIC:
-			return check_t_t::INT;
+			return check_t_t::INTEGER;
 		case base_t_t::STR:
 			return check_t_t::STRING;
 		case base_t_t::ID:
@@ -299,8 +299,8 @@ namespace DB::ast {
 				id_t = table::getColumnInfo(tableName, idPtr->_columnName).col_t_;
 			else
 				id_t = table::getColumnInfo(idPtr->_tableName, idPtr->_columnName).col_t_;
-			if (id_t == page::col_t_t::INT)
-				return check_t_t::INT;
+			if (id_t == page::col_t_t::INTEGER)
+				return check_t_t::INTEGER;
 			else if (id_t == page::col_t_t::CHAR || id_t == page::col_t_t::VARCHAR)
 				return check_t_t::STRING;
 			//more data type...

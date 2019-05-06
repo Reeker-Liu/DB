@@ -20,7 +20,7 @@ namespace DB::table {
 
 	page::key_t_t TableInfo::PK_t() const
 	{
-		return page::key_t_t::INT;
+		return page::key_t_t::INTEGER;
 	}
 
 	// return NOT_A_PAGE if not fk

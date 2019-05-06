@@ -207,10 +207,12 @@ RetValue vmVisit(const AtomExpr* root, const table::Row* row = nullptr);
 ### todo
 
 - createinfo print
-- all check visit case 
-- check pk nums
 - tsl delay check till know tablename
-- RetValue need bool?
+- all check visit case 
+  - type mismatch
+  - column existence
+  - table existence
+  - check pk nums
 - //(shelved till check optization)check CHAR and VARCHAR length according to table structure(sometimes cannot check)
 
 
