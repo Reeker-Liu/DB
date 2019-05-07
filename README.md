@@ -1,3 +1,5 @@
+> The main part of the project has been transferred to [xjbDB](https://github.com/rsy56640/xjbDB), only this readme will be up-to-date
+
 # Introduction
 
 > This project is front end part of database-miniDB for the course software engineering
