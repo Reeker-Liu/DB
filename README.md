@@ -50,6 +50,49 @@
 
 # Implementation
 
+### lexer token
+
+```cpp
+/* arithmetic operator */
+{ "+", type::ADD }, { "-", type::SUB }, { "*", type::MUL }, { "/", type::DIV }, { "%", type::MOD },
+
+/* logic operator */
+{ "AND", type::AND }, { "OR", type::OR },
+
+/* compare operator */
+{ "==", type::EQ }, { "!=", type::NEQ },
+{ "<", type::LESS }, { ">", type::GREATER }, { "<=", type::LEQ }, { ">=", type::GEQ },
+
+/* assign operator */
+{ "=", type::ASSIGN },
+
+/* numeric type */
+{ "INT", type::INT }, 
+
+/* special keyword */
+{ "CHAR", type::CHAR }, { "VARCHAR", type::VARCHAR }, { "$", type::WILDCARD },
+{ "NN", type::NOT_NULL }, { "DISTINCT", type::DISTINCT }, { "VALUES", type::VALUES },
+{ "CREATE", type::CREATE },{ "DROP", type::DROP },
+{ "INSERT", type::INSERT },{ "DELETE", type::DELETE },{ "UPDATE", type::UPDATE },{ "SELECT", type::SELECT },
+{ "SHOW", type::SHOW},
+{ "TABLE", type::TABLE },{ "FROM", type::FROM },{ "WHERE", type::WHERE },{ "JOIN", type::JOIN },
+{ "ORDERBY", type::ORDERBY },{ "ASC", type::ASC },{ "DESC", type::DESC },{ "SET", type::SET },
+{ "DEFAULT", type::DEFAULT },{ "PK", type::PRIMARY_KEY },{ "REFERENCES", type::REFERENCES },
+
+/* other operator */
+{ ",", type::COMMA }, { ".", type::PERIOD }, { ";", type::SEMICOLON },
+{ "?", type::QUESTION }, { ":", type::COLON },
+{ "(", type::LEFT_PARENTHESIS },      { ")", type::RIGHT_PARENTHESIS },
+{ "[", type::LEFT_SQUARE_BRACKETS },  { "]", type::RIGHT_SQUARE_BRACKETS },
+{ "{", type::LEFT_CURLY_BRACKETS },   { "}", type::RIGHT_CURLY_BRACKETS },
+
+{"EXIT", type::EXIT},
+```
+
+
+
+
+
 ### miniSQL syntax
 
 > the sql syntax is a subset of mySQL with some **modifications**
@@ -161,9 +204,9 @@ DROP TABLE USER
 output the AST to the given ostream regardless of validity
 
 ```cpp
-void outputVisit(const BaseExpr* root, std::ostream &os);
+void outputVisit(std::shared_ptr<const BaseExpr> root, std::ostream &os);
 
-void outputVisit(const BaseOp* root, std::ostream &os);
+void outputVisit(std::shared_ptr<const BaseOp> root, std::ostream &os);
 ```
 
 **check visit**
@@ -185,9 +228,9 @@ for any mismatching, throw DB_Exception
 if passing, it is guaranteed other visit function will never encounter unexcepted cases
 
 ```cpp
-void checkVisit(const BaseExpr* root, const std::string tableName = std::string());
+void checkVisit(std::shared_ptr<const BaseExpr> root, const std::string tableName = std::string());
 
-void checkVisit(const AtomExpr* root, const std::string tableName = std::string());
+void checkVisit(std::shared_ptr<const AtomExpr> root, const std::string tableName = std::string());
 ```
 
 **vm visit**
@@ -196,10 +239,10 @@ used to calculate the real value for a specified expression
 
 ```cpp
 //for WHERE clause(expression), used for filtering values of a row
-bool vmVisit(const BaseExpr* root, const table::Row* row);
+bool vmVisit(std::shared_ptr<const BaseExpr> root, table::row_view row);
 
 //for others(expressionAtom), used for computing math/string expression and data in the specified row
-RetValue vmVisit(const AtomExpr* root, const table::Row* row = nullptr);
+table::value_t vmVisitAtom(std::shared_ptr<const AtomExpr> root, table::row_view row = NULL_ROW);
 ```
 
 
