@@ -8,7 +8,7 @@
 
 - input (from vm)
 
-  - accept a whole string of sql statement ( excluding ';' )
+  - accept a string of sql statement ( excluding ';' )
 
 - lexer
 
@@ -25,11 +25,21 @@
 
 - output (to vm)
 
-  - if the statement is valid, return query plan struct
+  - whether the statement is valid, return a variant of query plan
 
-  - if it's exit statement, return exit
+  - no exception guaranteed
 
-  - otherwise error msg
+  - query plan includes
+
+    - CreateTableInfo
+    - DropTableInfo
+    - SelectInfo
+    - UpdateInfo
+    - InsertInfo
+    - DeleteInfo
+    - Show: used to show info about database 
+    - Exit: used to suggest quiting
+    - ErrorMsg
 
     
 
@@ -50,7 +60,9 @@
 
 # Implementation
 
-### lexer token
+### Lexer
+
+#### token
 
 ```cpp
 /* arithmetic operator */
@@ -89,7 +101,19 @@
 {"EXIT", type::EXIT},
 ```
 
+#### process
 
+- white spaces will be regarded as separators of tokens, redundant ones will be ignored
+
+- use different analyzers to analyze char by char
+- according to the token forms, analyzers include
+  - word_analyzer
+  - number_analyzer //support underline in a number for readablity
+  - single_operator_analyzer
+  - combinable_operator_analyzer
+  - string_analyzer //support both single quotation mark and double quotation marks
+- any unrecognized char or wrong char sequence will throw an exception which will be caught in the query phase
+- if no exception, lexer will generate a stream of tokens for next steps
 
 
 
@@ -118,7 +142,7 @@
   - `... ORDERBY id % 10 DESC`
 
 ```
-sqlStatement := ddlStatement | dmlStatement
+sqlStatement := ddlStatement | dmlStatement | "SHOW" | "EXIT"
 
 ddlStatement := createTable | dropTable
 dmlStatement := selectStatement | insertStatement | updateStatement | deleteStatement
@@ -181,19 +205,30 @@ DROP TABLE USER
 
 
 
-### Dependency relationship
+### Dependency relationship (.h files)
 
 ![Dependency relationship](pic/DependencyRelationship.png)
 
-### AST
+### AST inheritance relationship
 
 **expression AST**
 
 ![expression AST](pic/exprAST.png)
 
+- BaseExpr / AtomExpr / NonAtomExpr are virtual class and cannot be instantiated
+- BaseExpr has a variable base_t identifies its actual type
+
+
+
 **operation AST**
 
 ![operation AST](pic/opAST.png)
+
+- BaseOp is virtual class and cannot be instantiated
+- with a virtual function getOutPut
+- ProjectOp / FilterOp / JoinOP are used for the three kinds of basic operations of relational algebra
+
+
 
 ### visit functions
 
@@ -244,6 +279,30 @@ bool vmVisit(std::shared_ptr<const BaseExpr> root, table::row_view row);
 //for others(expressionAtom), used for computing math/string expression and data in the specified row
 table::value_t vmVisitAtom(std::shared_ptr<const AtomExpr> root, table::row_view row = NULL_ROW);
 ```
+
+
+
+### Query Plan
+
+this is an example of generating query plan
+
+`SELECT id, name FROM Student WHERE 2 + id  * 2 > 100 AND name == "xx";`
+
+generate token stream
+
+![tokenStream](pic/tokenStream.png)
+
+parse (part)
+
+![parse](pic/parse.png)
+
+syntax tree
+
+![Syntax tree](pic/syntaxTree.png)
+
+query plan
+
+![queryPlan](pic/queryPlan.png)
 
 
 
